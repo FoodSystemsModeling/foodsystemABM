@@ -8,7 +8,7 @@ The FFAR-ABModel was created to allow us to address scenarios relevant to Colora
 
 ## Code files
 
-  * [Model output files]("main/Model outputs") 
+  * [Model output files](../blob/main/Model outputs) 
   
   * [Model and model input files](https://www.dropbox.com/sh/ltchf4n4ye7yd7v/AAAo8lu8oHLHVspBMxN2Vw_ya?dl=0)
 
