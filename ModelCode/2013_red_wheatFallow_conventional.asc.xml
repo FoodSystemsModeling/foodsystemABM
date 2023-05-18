@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata xml:lang="en"><Esri><CreaDate>20220515</CreaDate><CreaTime>14375400</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce><DataProperties><lineage><Process ToolSource="c:\program files (x86)\arcgis\desktop10.5\ArcToolbox\Toolboxes\Data Management Tools.tbx\CalculateStatistics" Date="20220515" Time="143754">CalculateStatistics F:\CIP_Rural_Wealth\FFAR_ABMmodel\src\2013_red_wheatFallow_conventional.asc 1 1 # OVERWRITE "Feature Set"</Process></lineage></DataProperties></Esri></metadata>
