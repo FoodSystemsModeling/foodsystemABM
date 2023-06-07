@@ -10,15 +10,17 @@ The project included four primary objectives, to: 1) integrate available primary
 
 To our knowledge, this is the first research project in the U.S. to conduct a rigorous multi-disciplinary evaluation of tradeoffs associated with scenarios of public food procurement. The scenarios were selected based on how Denver was considering implementation of the Good Food Purchasing Program (GFPP). The Center for Good Food Purchasing’s GFPP is the most widely implemented program in the U.S. to provide public institutions with a set of tools, technical support, and verification systems to assist institutions implement their values-based food procurement strategy.
 
-## Code files
+## Data and Code
 
-  * [Model output files](https://www.dropbox.com/sh/ltchf4n4ye7yd7v/AAAo8lu8oHLHVspBMxN2Vw_ya?dl=0)
+To enable replication of our work: 
+
+  * [Overview, Design Concepts, and Details for the FFAR-ABModel](https://github.com/CSU-Local-and-Regional-Food-Systems/foodsystemABM/blob/main/FFAR_ABM_Full_ODD_Nov_2022.docx) provides a full description of the model. 
   
-  * [Model and model input files](https://www.dropbox.com/sh/ltchf4n4ye7yd7v/AAAo8lu8oHLHVspBMxN2Vw_ya?dl=0)
+  * Input files and code required to run our scenarios may be downloaded at: [Model and model input/output files](https://www.dropbox.com/sh/ltchf4n4ye7yd7v/AAAo8lu8oHLHVspBMxN2Vw_ya?dl=0)
 
 ## Authors
 
-Becca B.R. Jablonski, Randall Boone, Erin Love, Allie Gunter Bauman, Laura Bellows, Stefanie Berganini, Alessandro Bonanno, Michael Carolan, Rebecca Cleary, Olaf David, Jasmine Dillon, Kevin Jablonski, Andrew S. Jones, Pratyoosh Kashyap, Morgan McCloskey, Jason Quinn, Elizabeth P. Ryan, Meagan Schipanski, Francesco Serafin, 	Hailey Summers, Dawn Thilmany, Javier Antonanzas, Mark Uchanski 
+Becca B.R. Jablonski, Randall Boone, Erin Love, Allison Bauman, Laura Bellows, Stefanie Berganini, Alessandro Bonanno, Michael Carolan, Rebecca Cleary, Olaf David, Jasmine Dillon, Kevin Jablonski, Andrew S. Jones, Pratyoosh Kashyap, Morgan McCloskey, Jason Quinn, Elizabeth P. Ryan, Meagan Schipanski, Francesco Serafin, Hailey Summers, Dawn Thilmany, Javier Antonanzas, Mark Uchanski 
 
 ## License
 
