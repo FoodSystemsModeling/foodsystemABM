@@ -1,0 +1,340 @@
+
+
+;; HEI scores
+
+to setup-hei
+  
+  ; from travis smith 2020 paper via alessandro 
+  set delta-hei-low-income 5.03
+  set delta-hei-high-income 2.47
+  
+  set hei-elementary 3.5
+  set hei-middlehigh 3.96
+  set hei-baseline 47.6
+   
+end
+
+
+to calculate-lca
+  ; make sure kg/lb conversions done appropriately in these calculations
+  
+  ; ---------------------------------POTATO
+  ;temp variables to convert lb to kg (1 lb = 0.454 kg)
+  
+
+  
+  ; potatoes produced in colorado 
+  set potato-russet-conventional_production-annual-kg (potato-russet-conventional_production-annual * .454)
+  set potato-russet-conventional_production-total-model-run-kg (potato-russet-conventional_production-total-model-run * .454)
+  set potato-russet-organic_production-annual-kg (potato-russet-organic_production-annual * .454)
+  set potato-russet-organic_production-total-model-run-kg (potato-russet-organic_production-total-model-run * .454)
+  set potato-purple-conventional_production-annual-kg (potato-purple-conventional_production-annual * .454)
+  set potato-purple-conventional_production-total-model-run-kg (potato-purple-conventional_production-total-model-run * .454)
+  set potato-purple-organic_production-annual-kg (potato-purple-organic_production-annual * .454)
+  set potato-purple-organic_production-total-model-run-kg (potato-purple-organic_production-total-model-run * .454)
+  
+  ; potatoes purchased by dps
+  set potato-french-fry_dps-purchased-annual-kg (potato-french-fry_dps-purchased-annual * .454)
+  set potato-french-fry_dps-purchased-total-model-run-kg (potato-french-fry_dps-purchased-total-model-run * .454)
+  set potato-russet-conventional_dps-purchased-annual-kg (potato-russet-conventional_dps-purchased-annual * .454) 
+  set potato-russet-conventional_dps-purchased-total-model-run-kg (potato-russet-conventional_dps-purchased-total-model-run * .454) 
+  set potato-russet-organic_dps-purchased-annual-kg (potato-russet-organic_dps-purchased-annual * .454) 
+  set potato-russet-organic_dps-purchased-total-model-run-kg (potato-russet-organic_dps-purchased-total-model-run * .454) 
+  set potato-purple-conventional_dps-purchased-annual-kg (potato-purple-conventional_dps-purchased-annual * .454) 
+  set potato-purple-conventional_dps-purchased-total-model-run-kg (potato-purple-conventional_dps-purchased-total-model-run * .454) 
+  set potato-purple-organic_dps-purchased-annual-kg (potato-purple-organic_dps-purchased-annual * .454) 
+  set potato-purple-organic_dps-purchased-total-model-run-kg (potato-purple-organic_dps-purchased-total-model-run * .454) 
+  set potato-specialty-product_dps-purchased-annual-kg (potato-specialty-product_dps-purchased-annual * .454)                   
+  set potato-specialty-product_dps-purchased-total-model-run-kg (potato-specialty-product_dps-purchased-total-model-run * .454)
+   
+  
+  
+  ; potato carbon equivalents and water depletion      Nov 30, 2021
+  ; CO2 annual
+  
+  set potato-russet-conventional_CO2-kg-eq-at-farm-annual  (potato-russet-conventional_per-kg-CO2-kg-eq-at-farm * potato-russet-conventional_production-annual-kg)
+  set potato-russet-conventional_CO2-kg-eq-at-Denver-annual  (potato-russet-conventional_per-kg-CO2-kg-eq-at-Denver * potato-russet-conventional_dps-purchased-annual-kg)
+  set potato-russet-organic_CO2-kg-eq-at-farm-annual  (potato-russet-organic_per-kg-CO2-kg-eq-at-farm * potato-russet-organic_production-annual-kg)
+  set potato-russet-organic_CO2-kg-eq-at-Denver-annual  (potato-russet-organic_per-kg-CO2-kg-eq-at-Denver * potato-russet-organic_dps-purchased-annual-kg)
+  set potato-purple-conventional_CO2-kg-eq-at-farm-annual  (potato-purple-conventional_per-kg-CO2-kg-eq-at-farm * potato-purple-conventional_production-annual-kg)
+  set potato-purple-conventional_CO2-kg-eq-at-Denver-annual  (potato-purple-conventional_per-kg-CO2-kg-eq-at-Denver * potato-purple-conventional_dps-purchased-annual-kg)
+  set potato-purple-organic_CO2-kg-eq-at-farm-annual  (potato-purple-organic_per-kg-CO2-kg-eq-at-farm * potato-purple-organic_production-annual-kg)
+  set potato-purple-organic_CO2-kg-eq-at-Denver-annual  (potato-purple-organic_per-kg-CO2-kg-eq-at-Denver * potato-purple-organic_dps-purchased-annual-kg)
+  set potato-french-fry_CO2-kg-eq-at-Denver-annual (potato-french-fry_per-kg-CO2-kg-eq-at-Denver * potato-french-fry_dps-purchased-annual-kg)
+  set potato-specialty-product_CO2-kg-eq-at-Denver-annual (potato-specialty-product_per-kg-CO2-kg-eq-at-Denver * potato-specialty-product_dps-purchased-annual-kg)
+  
+  ; H2O annual
+  
+  set potato-russet-conventional_h2o-m3-at-farm-annual  (potato-russet-conventional_per-kg-h2o-m3-at-farm * potato-russet-conventional_production-annual-kg)
+  set potato-russet-conventional_h2o-m3-at-Denver-annual  (potato-russet-conventional_per-kg-h2o-m3-at-Denver * potato-russet-conventional_dps-purchased-annual-kg)  
+  set potato-russet-organic_h2o-m3-at-farm-annual  (potato-russet-organic_per-kg-h2o-m3-at-farm * potato-russet-organic_production-annual-kg)  
+  set potato-russet-organic_h2o-m3-at-Denver-annual  (potato-russet-organic_per-kg-h2o-m3-at-Denver * potato-russet-organic_dps-purchased-annual-kg)  
+  set potato-purple-conventional_h2o-m3-at-farm-annual  (potato-purple-conventional_per-kg-h2o-m3-at-farm * potato-purple-conventional_production-annual-kg)  
+  set potato-purple-conventional_h2o-m3-at-Denver-annual  (potato-purple-conventional_per-kg-h2o-m3-at-Denver * potato-purple-conventional_dps-purchased-annual-kg)  
+  set potato-purple-organic_h2o-m3-at-farm-annual  (potato-purple-organic_per-kg-h2o-m3-at-farm * potato-purple-organic_production-annual-kg)  
+  set potato-purple-organic_h2o-m3-at-Denver-annual  (potato-purple-organic_per-kg-h2o-m3-at-Denver * potato-purple-organic_dps-purchased-annual-kg) 
+  set potato-french-fry_h2o-m3-at-Denver-annual (potato-french-fry_per-kg-h2o-m3-at-Denver * potato-french-fry_dps-purchased-annual-kg)
+  set potato-specialty-product_h2o-m3-at-Denver-annual (potato-specialty-product_per-kg-h2o-m3-at-Denver * potato-specialty-product_dps-purchased-annual-kg)
+
+  ; CO2 model run
+  set potato-russet-conventional_CO2-kg-eq-at-farm-model-run  (potato-russet-conventional_per-kg-CO2-kg-eq-at-farm * potato-russet-conventional_production-total-model-run-kg)  
+  set potato-russet-conventional_CO2-kg-eq-at-Denver-model-run  (potato-russet-conventional_per-kg-CO2-kg-eq-at-Denver * potato-russet-conventional_dps-purchased-total-model-run-kg)    
+  set potato-russet-organic_CO2-kg-eq-at-farm-model-run  (potato-russet-organic_per-kg-CO2-kg-eq-at-farm * potato-russet-organic_production-total-model-run-kg)    
+  set potato-russet-organic_CO2-kg-eq-at-Denver-model-run  (potato-russet-organic_per-kg-CO2-kg-eq-at-Denver * potato-russet-organic_dps-purchased-total-model-run-kg)    
+  set potato-purple-conventional_CO2-kg-eq-at-farm-model-run  (potato-purple-conventional_per-kg-CO2-kg-eq-at-farm * potato-purple-conventional_production-total-model-run-kg)    
+  set potato-purple-conventional_CO2-kg-eq-at-Denver-model-run  (potato-purple-conventional_per-kg-CO2-kg-eq-at-Denver * potato-purple-conventional_dps-purchased-total-model-run-kg)    
+  set potato-purple-organic_CO2-kg-eq-at-farm-model-run  (potato-purple-organic_per-kg-CO2-kg-eq-at-farm * potato-purple-organic_production-total-model-run-kg)    
+  set potato-purple-organic_CO2-kg-eq-at-Denver-model-run  (potato-purple-organic_per-kg-CO2-kg-eq-at-Denver * potato-purple-organic_dps-purchased-total-model-run-kg)    
+  set potato-french-fry_CO2-kg-eq-at-Denver-model-run (potato-french-fry_per-kg-CO2-kg-eq-at-Denver * potato-french-fry_dps-purchased-total-model-run-kg)
+  set potato-specialty-product_CO2-kg-eq-at-Denver-model-run (potato-specialty-product_per-kg-CO2-kg-eq-at-Denver * potato-specialty-product_dps-purchased-total-model-run-kg)
+  
+  ; H2O model run 
+  set potato-russet-conventional_h2o-m3-at-farm-model-run  (potato-russet-conventional_per-kg-h2o-m3-at-farm * potato-russet-conventional_production-total-model-run-kg)    
+  set potato-russet-conventional_h2o-m3-at-Denver-model-run  (potato-russet-conventional_per-kg-h2o-m3-at-Denver * potato-russet-conventional_dps-purchased-total-model-run-kg)    
+  set potato-russet-organic_h2o-m3-at-farm-model-run  (potato-russet-organic_per-kg-h2o-m3-at-farm * potato-russet-organic_production-total-model-run-kg)    
+  set potato-russet-organic_h2o-m3-at-Denver-model-run  (potato-russet-organic_per-kg-h2o-m3-at-Denver * potato-russet-organic_dps-purchased-total-model-run-kg)    
+  set potato-purple-conventional_h2o-m3-at-farm-model-run  (potato-purple-conventional_per-kg-h2o-m3-at-farm * potato-purple-conventional_production-total-model-run-kg)    
+  set potato-purple-conventional_h2o-m3-at-Denver-model-run  (potato-purple-conventional_per-kg-h2o-m3-at-Denver * potato-purple-conventional_dps-purchased-total-model-run-kg)    
+  set potato-purple-organic_h2o-m3-at-farm-model-run  (potato-purple-organic_per-kg-h2o-m3-at-farm * potato-purple-organic_production-total-model-run-kg)    
+  set potato-purple-organic_h2o-m3-at-Denver-model-run  (potato-purple-organic_per-kg-h2o-m3-at-Denver * potato-purple-organic_dps-purchased-total-model-run-kg)
+  set potato-french-fry_h2o-m3-at-Denver-model-run (potato-french-fry_per-kg-h2o-m3-at-Denver * potato-french-fry_dps-purchased-total-model-run-kg)
+  set potato-specialty-product_h2o-m3-at-Denver-model-run (potato-specialty-product_per-kg-h2o-m3-at-Denver * potato-specialty-product_dps-purchased-total-model-run-kg)
+  
+  
+
+  ; Totals for carbon dioxide equivalents and water depletion
+  set potato_CO2-kg-eq-at-farm-annual (potato-russet-conventional_CO2-kg-eq-at-farm-annual + potato-russet-organic_CO2-kg-eq-at-farm-annual + potato-purple-conventional_CO2-kg-eq-at-farm-annual + potato-purple-organic_CO2-kg-eq-at-farm-annual)
+  set potato_CO2-kg-eq-at-Denver-annual (potato-russet-conventional_CO2-kg-eq-at-Denver-annual + potato-russet-organic_CO2-kg-eq-at-Denver-annual + potato-purple-conventional_CO2-kg-eq-at-Denver-annual + potato-purple-organic_CO2-kg-eq-at-Denver-annual + potato-french-fry_CO2-kg-eq-at-Denver-annual + potato-specialty-product_CO2-kg-eq-at-Denver-annual)
+  set potato_h2o-m3-at-farm-annual (potato-russet-conventional_h2o-m3-at-farm-annual + potato-russet-organic_h2o-m3-at-farm-annual + potato-purple-conventional_h2o-m3-at-farm-annual + potato-purple-organic_h2o-m3-at-farm-annual)
+  set potato_h2o-m3-at-Denver-annual (potato-russet-conventional_h2o-m3-at-Denver-annual + potato-russet-organic_h2o-m3-at-Denver-annual + potato-purple-conventional_h2o-m3-at-Denver-annual + potato-purple-organic_h2o-m3-at-Denver-annual + potato-french-fry_h2o-m3-at-Denver-annual + potato-specialty-product_h2o-m3-at-Denver-annual)
+  set potato_CO2-kg-eq-at-farm-model-run (potato-russet-conventional_CO2-kg-eq-at-farm-model-run + potato-russet-organic_CO2-kg-eq-at-farm-model-run + potato-purple-conventional_CO2-kg-eq-at-farm-model-run + potato-purple-organic_CO2-kg-eq-at-farm-model-run)
+  set potato_CO2-kg-eq-at-Denver-model-run (potato-russet-conventional_CO2-kg-eq-at-Denver-model-run + potato-russet-organic_CO2-kg-eq-at-Denver-model-run + potato-purple-conventional_CO2-kg-eq-at-Denver-model-run + potato-purple-organic_CO2-kg-eq-at-Denver-model-run + potato-french-fry_CO2-kg-eq-at-Denver-model-run + potato-specialty-product_CO2-kg-eq-at-Denver-model-run)
+  set potato_h2o-m3-at-farm-model-run (potato-russet-conventional_h2o-m3-at-farm-model-run + potato-russet-organic_h2o-m3-at-farm-model-run + potato-purple-conventional_h2o-m3-at-farm-model-run + potato-purple-organic_h2o-m3-at-farm-model-run)
+  set potato_h2o-m3-at-Denver-model-run (potato-russet-conventional_h2o-m3-at-Denver-model-run + potato-russet-organic_h2o-m3-at-Denver-model-run + potato-purple-conventional_h2o-m3-at-Denver-model-run + potato-purple-organic_h2o-m3-at-Denver-model-run + potato-french-fry_h2o-m3-at-Denver-model-run + potato-specialty-product_h2o-m3-at-Denver-model-run)
+  
+    
+  
+  ; ---------------------------------WHEAT
+  ; wheat produced in colorado 
+  ;temp variables to convert lb to kg (1 lb = 0.454 kg)
+  set wheat-hrw-conventional_production-annual-kg (wheat-hrw-conventional_production-annual * .454)
+  set wheat-hrw-conventional_production-total-model-run-kg (wheat-hrw-conventional_production-total-model-run * .454)
+  set wheat-hrw-organic_production-annual-kg (wheat-hrw-organic_production-annual * .454)
+  set wheat-hrw-organic_production-total-model-run-kg (wheat-hrw-organic_production-total-model-run * .454)
+  set wheat-snowmass-conventional_production-annual-kg (wheat-snowmass-conventional_production-annual * .454)
+  set wheat-snowmass-conventional_production-total-model-run-kg (wheat-snowmass-conventional_production-total-model-run * .454)
+  
+  ; wheat products purchased by dps in kg 
+  set wheat-hrw-conventional-flour_dps-purchased-annual-kg (wheat-hrw-conventional-flour_dps-purchased-annual * .454)
+  set wheat-hrw-conventional-flour_dps-purchased-total-model-run-kg (wheat-hrw-conventional-flour_dps-purchased-total-model-run * .454)
+  set wheat-hrw-organic-flour_dps-purchased-annual-kg (wheat-hrw-organic-flour_dps-purchased-annual * .454)
+  set wheat-hrw-organic-flour_dps-purchased-total-model-run-kg (wheat-hrw-organic-flour_dps-purchased-total-model-run * .454)
+  set wheat-snowmass-conventional-flour_dps-purchased-annual-kg (wheat-snowmass-conventional-flour_dps-purchased-annual * .454)
+  set wheat-snowmass-conventional-flour_dps-purchased-total-model-run-kg (wheat-snowmass-conventional-flour_dps-purchased-total-model-run * .454)
+  set wheat-hrw-conventional-bread_dps-purchased-annual-kg (wheat-hrw-conventional-bread_dps-purchased-annual * .454)
+  set wheat-hrw-conventional-bread_dps-purchased-total-model-run-kg (wheat-hrw-conventional-bread_dps-purchased-total-model-run * .454)
+  set wheat-hrw-organic-bread_dps-purchased-annual-kg (wheat-hrw-organic-bread_dps-purchased-annual * .454)
+  set wheat-hrw-organic-bread_dps-purchased-total-model-run-kg (wheat-hrw-organic-bread_dps-purchased-total-model-run * .454)
+  set wheat-snowmass-conventional-bread_dps-purchased-annual-kg (wheat-snowmass-conventional-bread_dps-purchased-annual * .454)
+  set wheat-snowmass-conventional-bread_dps-purchased-total-model-run-kg (wheat-snowmass-conventional-bread_dps-purchased-total-model-run * .454)
+  
+  
+  
+  ; Wheat carbon equivalents and water depletion      Feb 24, 2022
+      
+  ; CO2 annual
+  set wheat-snowmass-conventional_CO2-kg-eq-at-farm-annual  (wheat-snowmass-conventional_per-kg-CO2-kg-eq-at-farm * wheat-snowmass-conventional_production-annual-kg)
+  set wheat-hrw-conventional_CO2-kg-eq-at-farm-annual  (wheat-hrw-conventional_per-kg-CO2-kg-eq-at-farm * wheat-hrw-conventional_production-annual-kg)
+  set wheat-hrw-organic_CO2-kg-eq-at-farm-annual  (wheat-hrw-organic_per-kg-CO2-kg-eq-at-farm * wheat-hrw-organic_production-annual-kg)
+  set wheat-snowmass-conventional-flour_CO2-kg-eq-at-Denver-annual  (wheat-snowmass-conventional-flour_per-kg-CO2-kg-eq-at-Denver * wheat-snowmass-conventional-flour_dps-purchased-annual-kg)
+  set wheat-hrw-conventional-flour_CO2-kg-eq-at-Denver-annual  (wheat-hrw-conventional-flour_per-kg-CO2-kg-eq-at-Denver * wheat-hrw-conventional-flour_dps-purchased-annual-kg)
+  set wheat-hrw-organic-flour_CO2-kg-eq-at-Denver-annual  (wheat-hrw-organic-flour_per-kg-CO2-kg-eq-at-Denver * wheat-hrw-organic-flour_dps-purchased-annual-kg)
+  set wheat-snowmass-conventional-bread_CO2-kg-eq-at-Denver-annual  (wheat-snowmass-conventional-bread_per-kg-CO2-kg-eq-at-Denver * wheat-snowmass-conventional-bread_dps-purchased-annual-kg)
+  set wheat-hrw-conventional-bread_CO2-kg-eq-at-Denver-annual  (wheat-hrw-conventional-bread_per-kg-CO2-kg-eq-at-Denver * wheat-hrw-conventional-bread_dps-purchased-annual-kg)
+  set wheat-hrw-organic-bread_CO2-kg-eq-at-Denver-annual  (wheat-hrw-organic-bread_per-kg-CO2-kg-eq-at-Denver * wheat-hrw-organic-bread_dps-purchased-annual-kg)
+  
+  ; H2O annual
+  set wheat-snowmass-conventional_h2o-m3-at-farm-annual  (wheat-snowmass-conventional_per-kg-h2o-m3-at-farm * wheat-snowmass-conventional_production-annual-kg)
+  set wheat-hrw-conventional_h2o-m3-at-farm-annual  (wheat-hrw-conventional_per-kg-h2o-m3-at-farm * wheat-hrw-conventional_production-annual-kg)
+  set wheat-hrw-organic_h2o-m3-at-farm-annual  (wheat-hrw-organic_per-kg-h2o-m3-at-farm * wheat-hrw-organic_production-annual-kg)
+  set wheat-snowmass-conventional-flour_h2o-m3-at-Denver-annual  (wheat-snowmass-conventional-flour_per-kg-h2o-m3-at-Denver * wheat-snowmass-conventional-flour_dps-purchased-annual-kg)
+  set wheat-hrw-conventional-flour_h2o-m3-at-Denver-annual  (wheat-hrw-conventional-flour_per-kg-h2o-m3-at-Denver * wheat-hrw-conventional-flour_dps-purchased-annual-kg)
+  set wheat-hrw-organic-flour_h2o-m3-at-Denver-annual  (wheat-hrw-organic-flour_per-kg-h2o-m3-at-Denver * wheat-hrw-organic-flour_dps-purchased-annual-kg)
+  set wheat-snowmass-conventional-bread_h2o-m3-at-Denver-annual  (wheat-snowmass-conventional-bread_per-kg-h2o-m3-at-Denver * wheat-snowmass-conventional-bread_dps-purchased-annual-kg)
+  set wheat-hrw-conventional-bread_h2o-m3-at-Denver-annual  (wheat-hrw-conventional-bread_per-kg-h2o-m3-at-Denver * wheat-hrw-conventional-bread_dps-purchased-annual-kg)
+  set wheat-hrw-organic-bread_h2o-m3-at-Denver-annual  (wheat-hrw-organic-bread_per-kg-h2o-m3-at-Denver * wheat-hrw-organic-bread_dps-purchased-annual-kg)
+  
+  
+  ; CO2 model run
+  set wheat-snowmass-conventional_CO2-kg-eq-at-farm-model-run  (wheat-snowmass-conventional_per-kg-CO2-kg-eq-at-farm * wheat-snowmass-conventional_production-total-model-run-kg)
+  set wheat-hrw-conventional_CO2-kg-eq-at-farm-model-run  (wheat-hrw-conventional_per-kg-CO2-kg-eq-at-farm * wheat-hrw-conventional_production-total-model-run-kg)
+  set wheat-hrw-organic_CO2-kg-eq-at-farm-model-run  (wheat-hrw-organic_per-kg-CO2-kg-eq-at-farm * wheat-hrw-organic_production-total-model-run-kg)
+  set wheat-snowmass-conventional-flour_CO2-kg-eq-at-Denver-model-run  (wheat-snowmass-conventional-flour_per-kg-CO2-kg-eq-at-Denver * wheat-snowmass-conventional-flour_dps-purchased-total-model-run-kg)
+  set wheat-hrw-conventional-flour_CO2-kg-eq-at-Denver-model-run  (wheat-hrw-conventional-flour_per-kg-CO2-kg-eq-at-Denver * wheat-hrw-conventional-flour_dps-purchased-total-model-run-kg)
+  set wheat-hrw-organic-flour_CO2-kg-eq-at-Denver-model-run  (wheat-hrw-organic-flour_per-kg-CO2-kg-eq-at-Denver * wheat-hrw-organic-flour_dps-purchased-total-model-run-kg)
+  set wheat-snowmass-conventional-bread_CO2-kg-eq-at-Denver-model-run  (wheat-snowmass-conventional-bread_per-kg-CO2-kg-eq-at-Denver * wheat-snowmass-conventional-bread_dps-purchased-total-model-run-kg)
+  set wheat-hrw-conventional-bread_CO2-kg-eq-at-Denver-model-run  (wheat-hrw-conventional-bread_per-kg-CO2-kg-eq-at-Denver * wheat-hrw-conventional-bread_dps-purchased-total-model-run-kg)
+  set wheat-hrw-organic-bread_CO2-kg-eq-at-Denver-model-run  (wheat-hrw-organic-bread_per-kg-CO2-kg-eq-at-Denver * wheat-hrw-organic-bread_dps-purchased-total-model-run-kg)
+ 
+  ; H2O model run  
+  set wheat-snowmass-conventional_h2o-m3-at-farm-model-run  (wheat-snowmass-conventional_per-kg-h2o-m3-at-farm * wheat-snowmass-conventional_production-total-model-run-kg)
+  set wheat-hrw-conventional_h2o-m3-at-farm-model-run  (wheat-hrw-conventional_per-kg-h2o-m3-at-farm * wheat-hrw-conventional_production-total-model-run-kg)
+  set wheat-hrw-organic_h2o-m3-at-farm-model-run  (wheat-hrw-organic_per-kg-h2o-m3-at-farm * wheat-hrw-organic_production-total-model-run-kg)
+  set wheat-snowmass-conventional-flour_h2o-m3-at-Denver-model-run  (wheat-snowmass-conventional-flour_per-kg-h2o-m3-at-Denver * wheat-snowmass-conventional-flour_dps-purchased-total-model-run-kg)
+  set wheat-hrw-conventional-flour_h2o-m3-at-Denver-model-run  (wheat-hrw-conventional-flour_per-kg-h2o-m3-at-Denver * wheat-hrw-conventional-flour_dps-purchased-total-model-run-kg)
+  set wheat-hrw-organic-flour_h2o-m3-at-Denver-model-run  (wheat-hrw-organic-flour_per-kg-h2o-m3-at-Denver * wheat-hrw-organic-flour_dps-purchased-total-model-run-kg)
+  set wheat-snowmass-conventional-bread_h2o-m3-at-Denver-model-run  (wheat-snowmass-conventional-bread_per-kg-h2o-m3-at-Denver * wheat-snowmass-conventional-bread_dps-purchased-total-model-run-kg)
+  set wheat-hrw-conventional-bread_h2o-m3-at-Denver-model-run  (wheat-hrw-conventional-bread_per-kg-h2o-m3-at-Denver * wheat-hrw-conventional-bread_dps-purchased-total-model-run-kg)
+  set wheat-hrw-organic-bread_h2o-m3-at-Denver-model-run  (wheat-hrw-organic-bread_per-kg-h2o-m3-at-Denver * wheat-hrw-organic-bread_dps-purchased-total-model-run-kg)
+   
+  ; Totals for carbon dioxide equivalents and water depletion
+  set wheat_CO2-kg-eq-at-farm-annual (wheat-snowmass-conventional_CO2-kg-eq-at-farm-annual + wheat-hrw-conventional_CO2-kg-eq-at-farm-annual + wheat-hrw-organic_CO2-kg-eq-at-farm-annual) 
+  set wheat_CO2-kg-eq-at-Denver-annual (wheat-snowmass-conventional-flour_CO2-kg-eq-at-Denver-annual + wheat-hrw-conventional-flour_CO2-kg-eq-at-Denver-annual + wheat-hrw-organic-flour_CO2-kg-eq-at-Denver-annual) +
+                                     (wheat-snowmass-conventional-bread_CO2-kg-eq-at-Denver-annual + wheat-hrw-conventional-bread_CO2-kg-eq-at-Denver-annual + wheat-hrw-organic-bread_CO2-kg-eq-at-Denver-annual)
+  set wheat_h2o-m3-at-farm-annual (wheat-snowmass-conventional_h2o-m3-at-farm-annual + wheat-hrw-conventional_h2o-m3-at-farm-annual + wheat-hrw-organic_h2o-m3-at-farm-annual) 
+  set wheat_h2o-m3-at-Denver-annual (wheat-snowmass-conventional-flour_h2o-m3-at-Denver-annual + wheat-hrw-conventional-flour_h2o-m3-at-Denver-annual + wheat-hrw-organic-flour_h2o-m3-at-Denver-annual) +
+                                     (wheat-snowmass-conventional-bread_h2o-m3-at-Denver-annual + wheat-hrw-conventional-bread_h2o-m3-at-Denver-annual + wheat-hrw-organic-bread_h2o-m3-at-Denver-annual)
+  set wheat_CO2-kg-eq-at-farm-model-run (wheat-snowmass-conventional_CO2-kg-eq-at-farm-model-run + wheat-hrw-conventional_CO2-kg-eq-at-farm-model-run + wheat-hrw-organic_CO2-kg-eq-at-farm-model-run) 
+  set wheat_CO2-kg-eq-at-Denver-model-run (wheat-snowmass-conventional-flour_CO2-kg-eq-at-Denver-model-run + wheat-hrw-conventional-flour_CO2-kg-eq-at-Denver-model-run + wheat-hrw-organic-flour_CO2-kg-eq-at-Denver-model-run) +
+                                     (wheat-snowmass-conventional-bread_CO2-kg-eq-at-Denver-model-run + wheat-hrw-conventional-bread_CO2-kg-eq-at-Denver-model-run + wheat-hrw-organic-bread_CO2-kg-eq-at-Denver-model-run)
+  set wheat_h2o-m3-at-farm-model-run (wheat-snowmass-conventional_h2o-m3-at-farm-model-run + wheat-hrw-conventional_h2o-m3-at-farm-model-run + wheat-hrw-organic_h2o-m3-at-farm-model-run) 
+  set wheat_h2o-m3-at-Denver-model-run (wheat-snowmass-conventional-flour_h2o-m3-at-Denver-model-run + wheat-hrw-conventional-flour_h2o-m3-at-Denver-model-run + wheat-hrw-organic-flour_h2o-m3-at-Denver-model-run) +
+                                     (wheat-snowmass-conventional-bread_h2o-m3-at-Denver-model-run + wheat-hrw-conventional-bread_h2o-m3-at-Denver-model-run + wheat-hrw-organic-bread_h2o-m3-at-Denver-model-run)
+  
+  ; ---------------------------------PEACH
+  ;temp variables to convert lb to kg (1 lb = 0.454 kg)
+  let peach-conventional_production-annual-kg (peach-conventional_production-annual * .454)
+  let peach-conventional_production-total-model-run-kg (peach-conventional_production-total-model-run * .454)
+  let peach-organic_production-annual-kg (peach-organic_production-annual * .454)
+  let peach-organic_production-total-model-run-kg (peach-organic_production-total-model-run * .454)
+  let peach-seconds_production-annual-kg (peach-seconds_production-annual * .454)
+  let peach-seconds_production-total-model-run-kg (peach-seconds_production-total-model-run * .454)
+  
+  ; ---------------------------------BEEF
+  ;temp variables to convert lb to kg (1 lb = 0.454 kg)
+  let beef-conventional_production-annual-kg (beef-conventional_production-annual * .454)
+  let beef-conventional_production-total-model-run-kg (beef-conventional_production-total-model-run * .454)
+  let beef-grassfed_production-annual-kg (beef-grassfed_production-annual * .454)
+  let beef-grassfed_production-total-model-run-kg (beef-grassfed_production-total-model-run * .454)
+  let beef-colorado-source-id_production-annual-kg (beef-colorado-source-id_production-annual * .454)
+  let beef-colorado-source-id_production-total-model-run-kg (beef-colorado-source-id_production-total-model-run * .454)
+  let beef-animal-welfare_production-annual-kg (beef-animal-welfare_production-annual * .454)
+  let beef-animal-welfare_production-total-model-run-kg (beef-animal-welfare_production-total-model-run * .454)
+
+  ; Beef carbon equivalents and water depletion      May 21, 2022 / January 13, 2023
+      
+  ; CO2 annual
+  set beef-conventional_CO2-kg-eq-at-farm-annual  (beef-conventional_per-kg-CO2-kg-eq-at-farm * beef-conventional_production-annual-kg)
+  set beef-grassfed_CO2-kg-eq-at-farm-annual  (beef-grassfed_per-kg-CO2-kg-eq-at-farm * beef-grassfed_production-annual-kg)
+  set beef-colorado-source-id_CO2-kg-eq-at-farm-annual  (beef-colorado-source-id_per-kg-CO2-kg-eq-at-farm * beef-colorado-source-id_production-annual-kg)
+  set beef-animal-welfare_CO2-kg-eq-at-farm-annual  (beef-animal-welfare_per-kg-CO2-kg-eq-at-farm * beef-animal-welfare_production-annual-kg)
+  
+  ; H2O annual
+  set beef-conventional_h2o-m3-at-farm-annual  (beef-conventional_per-kg-h2o-m3-at-farm * beef-conventional_production-annual-kg)
+  set beef-grassfed_h2o-m3-at-farm-annual  (beef-grassfed_per-kg-h2o-m3-at-farm * beef-grassfed_production-annual-kg)
+  set beef-colorado-source-id_h2o-m3-at-farm-annual  (beef-colorado-source-id_per-kg-h2o-m3-at-farm * beef-colorado-source-id_production-annual-kg)
+  set beef-animal-welfare_h2o-m3-at-farm-annual  (beef-animal-welfare_per-kg-h2o-m3-at-farm * beef-animal-welfare_production-annual-kg)
+  
+  ; CO2 model run
+  set beef-conventional_CO2-kg-eq-at-farm-model-run  (beef-conventional_per-kg-CO2-kg-eq-at-farm * beef-conventional_production-total-model-run-kg)
+  set beef-grassfed_CO2-kg-eq-at-farm-model-run  (beef-grassfed_per-kg-CO2-kg-eq-at-farm * beef-grassfed_production-total-model-run-kg)
+  set beef-colorado-source-id_CO2-kg-eq-at-farm-model-run  (beef-colorado-source-id_per-kg-CO2-kg-eq-at-farm * beef-colorado-source-id_production-total-model-run-kg)
+  set beef-animal-welfare_CO2-kg-eq-at-farm-model-run  (beef-animal-welfare_per-kg-CO2-kg-eq-at-farm * beef-animal-welfare_production-total-model-run-kg)
+  
+  ; H2O model run
+  set beef-conventional_h2o-m3-at-farm-model-run  (beef-conventional_per-kg-h2o-m3-at-farm * beef-conventional_production-total-model-run-kg)
+  set beef-grassfed_h2o-m3-at-farm-model-run  (beef-grassfed_per-kg-h2o-m3-at-farm * beef-grassfed_production-total-model-run-kg)
+  set beef-colorado-source-id_h2o-m3-at-farm-model-run  (beef-colorado-source-id_per-kg-h2o-m3-at-farm * beef-colorado-source-id_production-total-model-run-kg)
+  set beef-animal-welfare_h2o-m3-at-farm-model-run  (beef-animal-welfare_per-kg-h2o-m3-at-farm * beef-animal-welfare_production-total-model-run-kg)
+   
+  ; Totals for carbon dioxide equivalents and water depletion
+  set beef_CO2-kg-eq-at-farm-annual (beef-conventional_CO2-kg-eq-at-farm-annual + beef-grassfed_CO2-kg-eq-at-farm-annual + beef-colorado-source-id_CO2-kg-eq-at-farm-annual + beef-animal-welfare_CO2-kg-eq-at-farm-annual) 
+  set beef_h2o-m3-at-farm-annual (beef-conventional_h2o-m3-at-farm-annual + beef-grassfed_h2o-m3-at-farm-annual + beef-colorado-source-id_h2o-m3-at-farm-annual + beef-animal-welfare_h2o-m3-at-farm-annual) 
+  set beef_CO2-kg-eq-at-farm-model-run (beef-conventional_CO2-kg-eq-at-farm-model-run + beef-grassfed_CO2-kg-eq-at-farm-model-run + beef-colorado-source-id_CO2-kg-eq-at-farm-model-run + beef-animal-welfare_CO2-kg-eq-at-farm-model-run) 
+  set beef_h2o-m3-at-farm-model-run (beef-conventional_h2o-m3-at-farm-model-run + beef-grassfed_h2o-m3-at-farm-model-run + beef-colorado-source-id_h2o-m3-at-farm-model-run + beef-animal-welfare_h2o-m3-at-farm-model-run) 
+  
+  ; CO2 annual - DENVER
+  set beef-conventional_CO2-kg-eq-at-Denver-annual  (beef-conventional_per-kg-CO2-kg-eq-at-Denver * beef-conventional_dps-purchased-annual-kg)
+  set beef-grassfed_CO2-kg-eq-at-Denver-annual  (beef-grassfed_per-kg-CO2-kg-eq-at-Denver * beef-grassfed_dps-purchased-annual-kg)
+  set beef-colorado-source-id_CO2-kg-eq-at-Denver-annual  (beef-colorado-source-id_per-kg-CO2-kg-eq-at-Denver * beef-colorado-source-id_dps-purchased-annual-kg)
+  set beef-animal-welfare_CO2-kg-eq-at-Denver-annual  (beef-animal-welfare_per-kg-CO2-kg-eq-at-Denver * beef-animal-welfare_dps-purchased-annual-kg)
+  
+  ; H2O annual - DENVER
+  set beef-conventional_h2o-m3-at-Denver-annual  (beef-conventional_per-kg-h2o-m3-at-Denver * beef-conventional_dps-purchased-annual-kg)
+  set beef-grassfed_h2o-m3-at-Denver-annual  (beef-grassfed_per-kg-h2o-m3-at-Denver * beef-grassfed_dps-purchased-annual-kg)
+  set beef-colorado-source-id_h2o-m3-at-Denver-annual  (beef-colorado-source-id_per-kg-h2o-m3-at-Denver * beef-colorado-source-id_dps-purchased-annual-kg)
+  set beef-animal-welfare_h2o-m3-at-Denver-annual  (beef-animal-welfare_per-kg-h2o-m3-at-Denver * beef-animal-welfare_dps-purchased-annual-kg)
+  
+    ; CO2 model run - DENVER
+  set beef-conventional_CO2-kg-eq-at-Denver-model-run  (beef-conventional_per-kg-CO2-kg-eq-at-Denver * beef-conventional_dps-purchased-total-model-run-kg)
+  set beef-grassfed_CO2-kg-eq-at-Denver-model-run  (beef-grassfed_per-kg-CO2-kg-eq-at-Denver * beef-grassfed_dps-purchased-total-model-run-kg)
+  set beef-colorado-source-id_CO2-kg-eq-at-Denver-model-run  (beef-colorado-source-id_per-kg-CO2-kg-eq-at-Denver * beef-colorado-source-id_dps-purchased-total-model-run-kg)
+  set beef-animal-welfare_CO2-kg-eq-at-Denver-model-run  (beef-animal-welfare_per-kg-CO2-kg-eq-at-Denver * beef-animal-welfare_dps-purchased-total-model-run-kg)
+
+  ; H2O model run - DENVER
+  set beef-conventional_h2o-m3-at-Denver-model-run  (beef-conventional_per-kg-h2o-m3-at-Denver * beef-conventional_dps-purchased-total-model-run-kg)
+  set beef-grassfed_h2o-m3-at-Denver-model-run  (beef-grassfed_per-kg-h2o-m3-at-Denver * beef-grassfed_dps-purchased-total-model-run-kg)
+  set beef-colorado-source-id_h2o-m3-at-Denver-model-run  (beef-colorado-source-id_per-kg-h2o-m3-at-Denver * beef-colorado-source-id_dps-purchased-total-model-run-kg)
+  set beef-animal-welfare_h2o-m3-at-Denver-model-run  (beef-animal-welfare_per-kg-h2o-m3-at-Denver * beef-animal-welfare_dps-purchased-total-model-run-kg)
+   
+  ; Totals for carbon dioxide equivalents and water depletion - DENVER
+  set beef_CO2-kg-eq-at-Denver-annual (beef-conventional_CO2-kg-eq-at-Denver-annual + beef-grassfed_CO2-kg-eq-at-Denver-annual + beef-colorado-source-id_CO2-kg-eq-at-Denver-annual + beef-animal-welfare_CO2-kg-eq-at-Denver-annual) 
+  set beef_h2o-m3-at-Denver-annual (beef-conventional_h2o-m3-at-Denver-annual + beef-grassfed_h2o-m3-at-Denver-annual + beef-colorado-source-id_h2o-m3-at-Denver-annual + beef-animal-welfare_h2o-m3-at-Denver-annual) 
+  set beef_CO2-kg-eq-at-Denver-model-run (beef-conventional_CO2-kg-eq-at-Denver-model-run + beef-grassfed_CO2-kg-eq-at-Denver-model-run + beef-colorado-source-id_CO2-kg-eq-at-Denver-model-run + beef-animal-welfare_CO2-kg-eq-at-Denver-model-run) 
+  set beef_h2o-m3-at-Denver-model-run (beef-conventional_h2o-m3-at-Denver-model-run + beef-grassfed_h2o-m3-at-Denver-model-run + beef-colorado-source-id_h2o-m3-at-Denver-model-run + beef-animal-welfare_h2o-m3-at-Denver-model-run) 
+  
+end
+
+
+to calculate-profitability 
+  
+  if potato-model = TRUE [ profitabilityCalculation potato_farmers ]
+  if potato-model = TRUE [ profitabilityCalculation potato_repackers ]
+  if potato-model = TRUE [ profitabilityCalculation potato_shippers ]
+  if potato-model = TRUE [ profitabilityCalculation potato_processors ]
+  if wheat-model = TRUE [ profitabilityCalculation wheat_farmers ]
+  if wheat-model = TRUE [ profitabilityCalculation wheat_elevators ]
+  if wheat-model = TRUE [ profitabilityCalculation wheat_mills ]
+  if wheat-model = TRUE [ profitabilityCalculation wheat_bakers ]
+  if peach-model = TRUE [ profitabilityCalculation peach_farmers ]
+  if peach-model = TRUE [ profitabilityCalculation peach_processors ]
+  if peach-model = TRUE [ profitabilityCalculation peach_altmarks ]
+  if beef-model = TRUE [ profitabilityCalculation beef_ranchers ]
+  if beef-model = TRUE [ profitabilityCalculation beef_packing-houses ]
+  profitabilityCalculation distributors
+  profitabilityCalculation dps_buyers
+  
+end
+
+
+to profitabilityCalculation [ agentset ]
+  
+  ask agentset [
+    
+    set assets-final assets
+    set assets-change ( assets-final - assets-initial )
+    set profitability-average ( ( assets-final - assets-initial ) / year )    
+   
+  ]
+  
+end
+
+to calculate-tls
+  if potato-model = TRUE [ tlsCalculation potato_farmers ] 
+  if wheat-model = TRUE [ tlsCalculation wheat_farmers ] 
+  if peach-model = TRUE [ tlsCalculation peach_farmers ] 
+  if beef-model = TRUE [ tlsCalculation beef_ranchers ] 
+end
+
+to tlsCalculation [ agentset ]
+  
+  ask agentset [ 
+    set tls-final transition-likelihood-score
+    set tls-change ( tls-final - tls-initial )
+  ] 
+  
+end
+
+
+
+

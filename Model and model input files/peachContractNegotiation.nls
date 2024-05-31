@@ -1,0 +1,1033 @@
+
+to priceAdjustments_peachesConventional [ buyers  buyer_count ]
+ 
+  if buyers = packer [ set packer peach_farmers with [outsource-packer = 1 ] ] 
+  
+  ask buyers [
+    if year != 1 [
+      let subgroup-number ( round ( market-knowledge * buyer_count ) ) 
+      let comparison-group n-of subgroup-number buyers
+      let lowest-buyer min-one-of comparison-group [ peaches-conventional_price-to-buy ] 
+      let highest-buyer max-one-of comparison-group [ peaches-conventional_price-to-buy ]
+      ask lowest-buyer [ set peaches-conventional_price-to-buy ( peaches-conventional_price-to-buy * 1.1 ) ]      
+      ask highest-buyer [ set peaches-conventional_price-to-buy ( peaches-conventional_price-to-buy * .9 ) ] 
+      ] 
+    ] 
+  
+end
+
+
+to-report contractSpaceAvailable_peachesConventional [ buyers  debug ]
+  
+  if buyers = packer [ set packer peach_farmers with [outsource-packer = 1 ] ]
+  
+  ask buyers [
+    set peaches-conventional_contract-space-available ( peaches-conventional_inventory-maximum - peaches-conventional_inventory-current ) 
+    if debug = TRUE [ print " " print agent-name print "contract space available: " print peaches-conventional_contract-space-available print " " ] ]
+  report buyers
+    
+end
+
+
+to setContracts_peachesConventional [ sellers  buyers  buyer_count  loyalty ]
+  
+  if buyers = packer [ set packer peach_farmers with [outsource-packer = 1 ] ]
+  if sellers = packer [ set packer peach_farmers with [outsource-packer = 1 ] ]
+  
+  if debug-mode = TRUE [ 
+    print " "
+    print "------------------------------------------------------"
+    print "CONTRACTING STEP:"
+    let tmp word sellers " sell to " 
+    print word tmp buyers
+    print "------------------------------------------------------" ]
+  
+  priceAdjustments_peachesConventional  buyers buyer_count
+  
+  set buyers contractSpaceAvailable_peachesConventional buyers debug-mode
+
+  ask sellers [
+    
+    if debug-mode = TRUE [ 
+        print " "  
+        print "-------------------------------------------------------"
+        print "beginning negotation"
+        print "-------------------------------------------------------"
+        print " " ]
+    
+    let peaches-conventional-quantity-estimate 0
+    let contracted-this-time 0
+    
+    ;; pseudo code for peach contracts, with weighted amounted based on calculations in dropbox and codebeamer pwpt
+    
+;    FARMS to OUTSOURCE PACKER AND POINT OF SALE
+    
+;    if farm is large;    
+;    send 89% to wholesale, 11% to alternative markets --> anything that doesn't sell is wasted (no sell price earned)    
+    
+;    if split-pack
+;    send 66% to outsource packer
+;    of remaining inventory (self-pack), send 70% to wholesale, 30% to alternative
+    
+;    if small or medium and not split pack
+;    send 70% to wholesale, 30% to alternative
+    
+;    if farm is outsource-packer
+;    send 100% to wholesale
+    
+;    DISTRIBUTOR
+;    nothing changes, just set contracting/sales to weekly
+;    
+;    ALTERNATIVE MARKETS
+;    assume distribution around 10% goes to waste, get paid for everything else       
+    
+    
+    if sellers != peach_farmers [
+      if peaches-conventional_my-incoming-total < 0 [ set peaches-conventional_my-incoming-total 0 ] ]
+    
+    ifelse sellers = peach_farmers [    
+      
+      let transaction-percent 0       
+      if farm-size = "large" [
+        if buyers = distributors [ set transaction-percent .89 ]
+;        if buyers = peach_altmarks [ set transaction-percent .11 ]  
+        ]  
+      if split-pack = 1 [
+        if buyers = packer [ set transaction-percent .66 ]
+        if buyers = distributors [ set transaction-percent .238 ]
+;        if buyers = peach_altmarks [ set transaction-percent .102 ]
+        ]
+      if ( farm-size = "small" ) or ( ( farm-size = "medium" ) and ( split-pack = 0 ) ) [
+        if buyers = distributors [ set transaction-percent .70 ]
+;        if buyers = peach_altmarks [ set transaction-percent .30 ]
+        ]        
+      set peaches-conventional-quantity-estimate ( ( peach-farmers_yield-estimated_conventional * .9 ) * transaction-percent )                     ;; the 90% of annual yield that is for prime sale
+      if buyers = peach_processors [ set peaches-conventional-quantity-estimate ( peach-farmers_yield-estimated_conventional * .1 ) ]          ;; the 10% of annual yield that goes to seconds
+      if debug-mode = TRUE [
+        print "farmer's total yield (peach-farmers_yield-estimated_conventional):"
+        print peach-farmers_yield-estimated_conventional
+        ]      
+      ]
+    
+    [ set peaches-conventional-quantity-estimate peaches-conventional_my-incoming-total ]
+
+    if debug-mode = TRUE [ 
+      print " "
+      print agent-name
+      print "estimated quantity available to contract this step (peaches-conventional-quantity-estimate):"
+      print peaches-conventional-quantity-estimate 
+      ]
+    
+    while [ ( peaches-conventional_promised < peaches-conventional-quantity-estimate ) and ( any? buyers with [ peaches-conventional_contract-space-available > 0 ] ) ] [
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "beginning while loop"
+        print "-------------------------------------------------------"
+        print " " ]
+      
+      if debug-mode = true [
+        print " "
+        print "we are thinking about buyers!"
+        print "seller name: "
+        print agent-name
+        print "seller id:"
+        print id
+        print "peaches-conventional_promised:"
+        print peaches-conventional_promised
+        print "peaches-conventional-quantity-estimate:"
+        print peaches-conventional-quantity-estimate ]
+
+      let buyers-with-capacity ( buyers with [ peaches-conventional_contract-space-available > 0 ] )
+      if debug-mode = true [
+        print " "
+        print "buyers with capacity:"
+        print buyers-with-capacity ]
+      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers ] ]  
+        [ set bidding_buyers buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers
+            print "who numbers of bidding buyers:"
+            print [who] of bidding_buyers ] ]
+
+      let my-buyer n-of 1 ( bidding_buyers with-max [ peaches-conventional_price-to-buy ] )     
+
+      if buyers = distributors [    
+        set peaches-conventional_price-to-sell-wholesale item 0 [ peaches-conventional_price-to-buy ] of my-buyer ]
+      if buyers = peach_altmarks [    
+        set peaches-conventional_price-to-sell-altmarks item 0 [ peaches-conventional_price-to-buy ] of my-buyer ]
+        
+      if debug-mode = true [
+        print " "
+        print "price to buy:"
+        print [ peaches-conventional_price-to-buy ] of my-buyer]
+        
+      let col-id id
+      let row-id 0
+      if debug-mode = true [ 
+        print " "
+        print "my buyer's name:"
+        print [ agent-name ] of my-buyer
+        print "my buyer's id:"
+        print [ id ] of my-buyer
+        print "my buyer's space available:"
+        print [ peaches-conventional_contract-space-available ] of my-buyer ]
+      ask my-buyer [
+        set row-id id ]
+      
+      let rounded-price 0
+      if buyers = distributors [
+        set rounded-price ( precision ( peaches-conventional_price-to-sell-wholesale ) 2 ) ]
+      if buyers = peach_altmarks [
+        set rounded-price ( precision ( peaches-conventional_price-to-sell-altmarks ) 2 ) ]
+      table_set peach-table_conventional row-id col-id PEACH_PRICE rounded-price debug-mode
+         
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "end of price negotatiations - moving on to quantity negotiation"
+        print "-------------------------------------------------------"
+        print " " ]
+              
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+      let contract-space-available item 0 ( [ peaches-conventional_contract-space-available ] of my-buyer )
+      let seller_peaches-available ( peaches-conventional-quantity-estimate - peaches-conventional_promised )
+        
+      ifelse contract-space-available >= seller_peaches-available
+        [ set contracted-this-time seller_peaches-available ]
+        [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]  
+        
+      if debug-mode = TRUE [
+        print " "
+        print "updated yield promised"
+        print peaches-conventional_promised ]  
+        
+      table_create_and_sum peach-table_conventional row-id col-id PEACH_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to peach quantity table
+
+      table_create_and_sum peach-table_conventional row-id col-id PEACH_OUTSTANDING_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to peach quantity table
+        
+      if debug-mode = TRUE [
+        print " "
+        print "yield promised before this contract"
+        print peaches-conventional_promised
+        print "amount contracted this time"
+        print contracted-this-time ]
+        
+      set peaches-conventional_promised ( peaches-conventional_promised + contracted-this-time )   
+        
+      if debug-mode = TRUE [
+        print " "
+        print "-------------------------------------------------------"
+        if sellers = peach_farmers [ print "farmer's total yield (peach-farmers_yield-estimated_conventional):" ]
+        if sellers = peach_farmers [ print peach-farmers_yield-estimated_conventional ]
+        print "updated total yield promised"
+        print peaches-conventional_promised
+        print "-------------------------------------------------------" 
+        print " " ]  
+        
+      ask my-buyer [
+        ifelse buyers = peach_processors [
+          set peaches-iqf_contract-space-available ( peaches-iqf_contract-space-available - contracted-this-time )
+          set peaches-iqf_my-incoming-total ( peaches-iqf_my-incoming-total + contracted-this-time)  
+          ]
+        [
+          set peaches-conventional_contract-space-available ( peaches-conventional_contract-space-available - contracted-this-time )
+          set peaches-conventional_my-incoming-total ( peaches-conventional_my-incoming-total + contracted-this-time)
+          ]
+        if debug-mode = true [
+          print " "
+          print "my buyer's updated space available:"
+          print peaches-conventional_contract-space-available ] ]              
+      ]
+      
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "end of while loop"
+      print "-------------------------------------------------------"
+      print " " ]
+      
+      ]   
+    
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "END OF NEGOTIATIONS FOR THIS AGENT"
+      print "-------------------------------------------------------"
+      print " " ]
+ 
+  ]
+  
+  
+;     ------ (negotiations end here. final print statements below)
+  
+  
+  if debug-mode = TRUE [
+    print " "
+    print "CONTRACT NEGOTIATION RESULTS:"
+    print " "
+    print "printing price debug table:"
+    debugMatrix peach-table_conventional PEACH_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+    print "printing quantity debug table:"
+    debugMatrix peach-table_conventional PEACH_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+  ask buyers [ 
+      let tmp word id ": " 
+      print word tmp peaches-conventional_contract-space-available ] ]
+  
+end 
+
+
+; END OF THIS PEACH TYPE
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+; START OF NEW PEACH TYPE
+
+
+to priceAdjustments_peachesOrganic [ buyers  buyer_count ]
+ 
+  if buyers = packer [ set packer peach_farmers with [outsource-packer = 1 ] ]
+  
+  ask buyers [
+  if year != 1 [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) ) 
+    let comparison-group n-of subgroup-number buyers
+    let lowest-buyer min-one-of comparison-group [ peaches-organic_price-to-buy ] 
+    let highest-buyer max-one-of comparison-group [ peaches-organic_price-to-buy ]
+    ask lowest-buyer [ set peaches-organic_price-to-buy ( peaches-organic_price-to-buy * 1.1 ) ]      
+    ask highest-buyer [ set peaches-organic_price-to-buy ( peaches-organic_price-to-buy * .9 ) ] ] ]
+  
+end
+
+
+to-report contractSpaceAvailable_peachesOrganic [ buyers  debug ]
+  
+  if buyers = packer [ set packer peach_farmers with [outsource-packer = 1 ] ]
+  
+  ask buyers [
+    set peaches-organic_contract-space-available ( peaches-organic_inventory-maximum - peaches-organic_inventory-current ) 
+    if debug = TRUE [ print " " print agent-name print "contract space available: " print peaches-organic_contract-space-available print " " ] ]
+  report buyers
+    
+end
+
+
+to setContracts_peachesOrganic [ sellers  buyers  buyer_count  loyalty ]
+  
+  if buyers = packer [ set packer peach_farmers with [outsource-packer = 1 ] ]
+  if sellers = packer [ set packer peach_farmers with [outsource-packer = 1 ] ]
+  
+  if debug-mode = TRUE [ 
+    print " "
+    print "------------------------------------------------------"
+    print "CONTRACTING STEP:"
+    let tmp word sellers " sell to " 
+    print word tmp buyers
+    print "------------------------------------------------------" ]
+  
+  priceAdjustments_peachesOrganic  buyers buyer_count
+  
+  set buyers contractSpaceAvailable_peachesOrganic buyers debug-mode
+
+  ask sellers [
+    
+    if debug-mode = TRUE [ 
+        print " "  
+        print "-------------------------------------------------------"
+        print "beginning negotation"
+        print "-------------------------------------------------------"
+        print " " ]
+    
+    let peaches-organic-quantity-estimate 0
+    let contracted-this-time 0
+    
+    if sellers != peach_farmers [
+      if peaches-organic_my-incoming-total < 0 [ set peaches-organic_my-incoming-total 0 ] ]
+    
+    ifelse sellers = peach_farmers [      
+      
+      let transaction-percent 0  
+      
+      if farm-size = "large" [
+        if buyers = distributors [ set transaction-percent .89 ]
+;        if buyers = peach_altmarks [ set transaction-percent .11 ]  
+        ]  
+      if split-pack = 1 [
+        if buyers = packer [ set transaction-percent .66 ]
+        if buyers = distributors [ set transaction-percent .238 ]
+;        if buyers = peach_altmarks [ set transaction-percent .102 ]
+        ]
+      if ( farm-size = "small" ) or ( farm-size = "medium" ) and ( split-pack = 0 ) [
+        if buyers = distributors [ set transaction-percent .70 ]
+;        if buyers = peach_altmarks [ set transaction-percent .30 ]
+        ]
+      if outsource-packer = 1 [
+        if buyers = distributors [ set transaction-percent 1 ]
+        ]
+        
+      set peaches-organic-quantity-estimate ( peach-farmers_yield-estimated_organic * .9 * transaction-percent )                     ;; the 90% of annual yield that is for prime sale
+      if buyers = peach_processors [ set peaches-organic-quantity-estimate ( peach-farmers_yield-estimated_organic * .1 ) ]           ;; the 10% of annual yield that goes to seconds
+      
+      if debug-mode = TRUE [
+        print "farmer's total yield (peach-farmers_yield-estimated_organic):"
+        print peach-farmers_yield-estimated_organic
+        ]
+      
+      ]
+    [ set peaches-organic-quantity-estimate peaches-organic_my-incoming-total ]
+
+    if debug-mode = TRUE [ 
+      print " "
+      print agent-name
+      print "estimated quantity available to contract this step (peaches-organic-quantity-estimate):"
+      print peaches-organic-quantity-estimate 
+      ]
+    
+    while [ ( peaches-organic_promised < peaches-organic-quantity-estimate ) and ( any? buyers with [ peaches-organic_contract-space-available > 0 ] ) ] [
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "beginning while loop"
+        print "-------------------------------------------------------"
+        print " " ]
+      
+      if debug-mode = true [
+        print " "
+        print "we are thinking about buyers!"
+        print "seller name: "
+        print agent-name
+        print "seller id:"
+        print id
+        print "peaches-organic_promised:"
+        print peaches-organic_promised
+        print "peaches-organic-quantity-estimate:"
+        print peaches-organic-quantity-estimate ]
+
+      let buyers-with-capacity ( buyers with [ peaches-organic_contract-space-available > 0 ] )
+      if debug-mode = true [
+        print " "
+        print "buyers with capacity:"
+        print buyers-with-capacity ]
+      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers ] ]  
+        [ set bidding_buyers buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers
+            print "who numbers of bidding buyers:"
+            print [who] of bidding_buyers ] ]
+
+       let my-buyer n-of 1 ( bidding_buyers with-max [ peaches-organic_price-to-buy ] )       
+        
+      set peaches-organic_price-to-sell item 0 [ peaches-organic_price-to-buy ] of my-buyer
+      if ( week = 5 ) or ( week = 18 ) 
+        [ set peaches-organic_price-to-sell ( peaches-organic_price-to-sell * 1.1 ) ] ; prices are 10% higher during the off-season
+      if debug-mode = true [
+        print " "
+        print "price to buy:"
+        print [ peaches-organic_price-to-buy ] of my-buyer]
+        
+      let col-id id
+      let row-id 0
+      if debug-mode = true [ 
+        print " "
+        print "my buyer's name:"
+        print [ agent-name ] of my-buyer
+        print "my buyer's id:"
+        print [ id ] of my-buyer
+        print "my buyer's space available:"
+        print [ peaches-organic_contract-space-available ] of my-buyer ]
+      ask my-buyer [
+        set row-id id ]
+
+      let rounded-price ( precision ( peaches-organic_price-to-sell ) 2 )
+      table_set peach-table_organic row-id col-id PEACH_PRICE rounded-price debug-mode
+         
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "end of price negotatiations - moving on to quantity negotiation"
+        print "-------------------------------------------------------"
+        print " " ]
+              
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+      let contract-space-available item 0 ( [ peaches-organic_contract-space-available ] of my-buyer )
+      let seller_peaches-available ( peaches-organic-quantity-estimate - peaches-organic_promised )
+        
+      ifelse contract-space-available >= seller_peaches-available
+        [ set contracted-this-time seller_peaches-available ]
+        [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]  
+        
+      if debug-mode = TRUE [
+        print " "
+        print "updated yield promised from matrix"
+        print peaches-organic_promised ]  
+        
+      table_create_and_sum peach-table_organic row-id col-id PEACH_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to potato quantity table
+
+      table_create_and_sum peach-table_organic row-id col-id PEACH_OUTSTANDING_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to potato quantity table
+        
+      if debug-mode = TRUE [
+        print " "
+        print "yield promised before this contract"
+        print peaches-organic_promised
+        print "amount contracted this time"
+        print contracted-this-time ]
+        
+      set peaches-organic_promised ( peaches-organic_promised + contracted-this-time )   
+        
+      if debug-mode = TRUE [
+        print " "
+        print "-------------------------------------------------------"
+        if sellers = peach_farmers [ print "farmer's total yield (peach-farmers_yield-estimated_organic):" ]
+        if sellers = peach_farmers [ print peach-farmers_yield-estimated_organic ]
+        print "updated total yield promised"
+        print peaches-organic_promised
+        print "-------------------------------------------------------" 
+        print " " ]  
+        
+      ask my-buyer [
+        set peaches-organic_contract-space-available ( peaches-organic_contract-space-available - contracted-this-time )
+        set peaches-organic_my-incoming-total ( peaches-organic_my-incoming-total + contracted-this-time)
+        if debug-mode = true [
+          print " "
+          print "my buyer's updated space available:"
+          print peaches-organic_contract-space-available ] ]              
+      ]
+      
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "end of while loop"
+      print "-------------------------------------------------------"
+      print " " ]
+      
+      ]   
+    
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "END OF NEGOTIATIONS FOR THIS AGENT"
+      print "-------------------------------------------------------"
+      print " " ]
+
+  ]
+  
+  
+;     ------ (negotiations end here. final print statements below)
+  
+  
+  if debug-mode = TRUE [
+    print " "
+    print "CONTRACT NEGOTIATION RESULTS:"
+    print " "
+    print "printing price debug table:"
+    debugMatrix peach-table_organic PEACH_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+    print "printing quantity debug table:"
+    debugMatrix peach-table_organic PEACH_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+  ask buyers [ 
+      let tmp word id ": " 
+      print word tmp peaches-organic_contract-space-available ] ]
+  
+end 
+
+
+; END OF THIS PEACH TYPE
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+; START OF NEW PEACH TYPE
+
+to priceAdjustments_peachesSeconds [ buyers buyer_count ]
+  
+  if year != 1 [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) ) 
+    let comparison-group n-of subgroup-number buyers
+    let lowest-buyer min-one-of comparison-group [ peaches-seconds_price-to-buy ]
+    let highest-buyer max-one-of comparison-group [ peaches-seconds_price-to-buy ]
+    ask lowest-buyer [ set peaches-seconds_price-to-buy ( peaches-seconds_price-to-buy * 1.1 ) ]      
+    ask highest-buyer [ set peaches-seconds_price-to-buy ( peaches-seconds_price-to-buy * .9 ) ] 
+    ]
+  
+end
+
+to-report contractSpaceAvailable_peachesSeconds [ buyers  debug ]
+  
+  ask buyers [
+    set peaches-seconds_contract-space-available ( peaches-seconds_inventory-maximum - peaches-seconds_inventory-current ) 
+    if debug = TRUE [ print " " print agent-name print "contract space available: " print peaches-seconds_contract-space-available print " " ] ]
+  report buyers
+    
+end
+
+to setContracts_peachesSeconds [ sellers  buyers  buyer_count  loyalty]
+  
+  if debug-mode = TRUE [ 
+    print " "
+    print "------------------------------------------------------"
+    print "CONTRACTING STEP:"
+    let tmp word sellers " sell to " 
+    print word tmp buyers
+    print "------------------------------------------------------" ]
+  
+  priceAdjustments_peachesSeconds buyers buyer_count
+  
+  set buyers contractSpaceAvailable_peachesSeconds buyers  debug-mode
+
+  ask sellers [
+    
+    if debug-mode = TRUE [ 
+        print " "  
+        print "-------------------------------------------------------"
+        print "beginning negotation"
+        print "-------------------------------------------------------"
+        print " " ]
+    
+    let peaches-seconds-quantity-estimate 0
+    let contracted-this-time 0
+
+        if sellers != peach_farmers [
+      if peaches-seconds_my-incoming-total < 0 [ set peaches-seconds_my-incoming-total 0 ] ]
+    
+    ifelse sellers = peach_farmers [      
+      
+      let transaction-percent 0  
+      
+      if farm-size = "large" [
+        if buyers = distributors [ set transaction-percent .89 ]
+;        if buyers = peach_altmarks [ set transaction-percent .11 ]  
+        ]  
+      if split-pack = 1 [
+        if buyers = packer [ set transaction-percent .66 ]
+        if buyers = distributors [ set transaction-percent .238 ]
+;        if buyers = peach_altmarks [ set transaction-percent .102 ]
+        ]
+      if ( farm-size = "small" ) or ( farm-size = "medium" ) and ( split-pack = 0 ) [
+        if buyers = distributors [ set transaction-percent .70 ]
+;        if buyers = peach_altmarks [ set transaction-percent .30 ]
+        ]
+      if outsource-packer = 1 [
+        if buyers = distributors [ set transaction-percent 1 ]
+        ]
+        
+      set peaches-seconds-quantity-estimate ( peach-farmers_yield-estimated_conventional * .1 * transaction-percent )   ]      ;; the 10% of annual yield that goes to seconds          
+      [ set peaches-seconds-quantity-estimate peaches-seconds_my-incoming-total ]
+      
+      if debug-mode = TRUE [
+        print "farmer's total yield (peach-farmers_yield-estimated_seconds):"
+        print peach-farmers_yield-estimated_seconds
+        ]
+    
+    if sellers = peach_processors [ set peaches-seconds-quantity-estimate ( peaches-seconds_my-incoming-total * .8 ) ]
+    if sellers = distributors [ set peaches-seconds-quantity-estimate peaches-seconds_my-incoming-total ]
+    if debug-mode = TRUE [ 
+      print " "
+      print agent-name
+      print "estimated quantity available to contract this step (peaches-seconds-quantity-estimate):"
+      print peaches-seconds-quantity-estimate ]
+  
+    while [ ( peaches-seconds_promised < peaches-seconds-quantity-estimate ) and ( any? buyers with [ peaches-seconds_contract-space-available > 0 ] ) ] [
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "beginning while loop"
+        print "-------------------------------------------------------"
+        print " " 
+        print "we are thinking about buyers!"
+        print "seller name: "
+        print agent-name
+        print "seller id:"
+        print id
+        print "iqf-conventional_promised:"
+        print peaches-seconds_promised
+        print "iqf-conventional-quantity-estimate:"
+        print peaches-seconds-quantity-estimate ]
+
+      let buyers-with-capacity ( buyers with [ peaches-seconds_contract-space-available > 0 ] )
+      if debug-mode = true [
+        print " "
+        print "buyers with capacity:"
+        print buyers-with-capacity ]
+      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers ] ]  
+        [ set bidding_buyers buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers
+            print "who numbers of bidding buyers:"
+            print [who] of bidding_buyers ] ]
+      
+      let my-buyer n-of 1 ( bidding_buyers with-max [ peaches-seconds_price-to-buy ] )           
+   
+      set peaches-seconds_price-to-sell-wholesale item 0 [ peaches-seconds_price-to-buy ] of my-buyer
+        if debug-mode = true [
+          print " "
+          print "price to buy:"
+          print [ peaches-seconds_price-to-buy ] of my-buyer]        
+        
+      let col-id id
+      let row-id 0
+      if debug-mode = true [
+        print " "
+        print "my buyer's name:"
+        print [ agent-name ] of my-buyer
+        print "my buyer's id:"
+        print [ id ] of my-buyer
+        print "my buyer's space available:"
+        print [ peaches-seconds_contract-space-available ] of my-buyer ]
+      ask my-buyer [
+        set row-id id ]
+     
+        let rounded-price 0 
+        if peach-scenario != "IQF" [ set rounded-price ( precision ( peaches-seconds_price-to-sell-wholesale ) 2 ) ] 
+        if peach-scenario = "IQF" [ set rounded-price ( precision ( random-normal peach-seconds-to-iqf_price-farmgate-wholesale-avg peach-seconds_price-farmgate-wholesale-stdev ) 2 ) ]
+      table_set peach-table_seconds row-id col-id PEACH_PRICE rounded-price debug-mode        
+         
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "end of price negotatiations - moving on to quantity negotiation"
+        print "-------------------------------------------------------"
+        print " " ]
+              
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+      let contract-space-available item 0 ( [ peaches-seconds_contract-space-available ] of my-buyer )
+      let seller_peaches-available ( peaches-seconds-quantity-estimate - peaches-seconds_promised )
+        
+      ifelse contract-space-available >= seller_peaches-available
+        [ set contracted-this-time seller_peaches-available ]
+        [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]
+      
+      if debug-mode = TRUE [
+        print " "
+        print "updated yield promised"
+        print peaches-seconds_promised ]  
+        
+      table_create_and_sum peach-table_seconds row-id col-id PEACH_QUANTITY contracted-this-time debug-mode
+      table_create_and_sum peach-table_seconds row-id col-id PEACH_OUTSTANDING_QUANTITY contracted-this-time debug-mode
+        
+      if debug-mode = TRUE [
+        print " "
+        print "yield promised before this contract"
+        print peaches-seconds_promised
+        print "amount contracted this time"
+        print contracted-this-time ]
+        
+      set peaches-seconds_promised ( peaches-seconds_promised + contracted-this-time )   
+        
+      if debug-mode = TRUE [
+        print " "
+        print "-------------------------------------------------------"
+        if sellers = peach_farmers [ print "farmer's total yield (peach-farmers_yield-estimated_seconds):" ]
+        if sellers = peach_farmers [ print peach-farmers_yield-estimated_conventional * peaches-percent-seconds ]
+        print "updated total yield promised"
+        print peaches-seconds_promised
+        print "-------------------------------------------------------" 
+        print " " ]  
+        
+      ask my-buyer [
+        set peaches-seconds_contract-space-available ( peaches-seconds_contract-space-available - contracted-this-time )
+        set peaches-seconds_my-incoming-total ( peaches-seconds_my-incoming-total + contracted-this-time)
+        if debug-mode = true [
+          print " "
+          print "my buyer's updated space available:"
+          print peaches-seconds_contract-space-available ] ]
+              
+      ]
+      
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "end of while loop"
+      print "-------------------------------------------------------"
+      print " " ]
+      
+      ]   
+    
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "END OF NEGOTIATIONS FOR THIS AGENT"
+      print "-------------------------------------------------------"
+      print " " ]
+ 
+  ]
+  
+  
+;     ------ (negotiations end here. final print statements below)
+  
+  
+  if debug-mode = TRUE [
+    print " "
+    print "CONTRACT NEGOTIATION RESULTS:"
+    print " "
+    print "printing price debug table:"
+    debugMatrix peach-table_seconds PEACH_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+    print "printing quantity debug table:"
+    debugMatrix peach-table_seconds PEACH_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+  ask buyers [ 
+      let tmp word id ": " 
+      print word tmp peaches-seconds_contract-space-available ] ]
+  
+end 
+
+; END OF THIS PEACH TYPE
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+; START OF NEW PEACH TYPE
+
+
+to priceAdjustments_peachesIqf [ buyers buyer_count ]
+  
+  if year != 1 [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) ) 
+    let comparison-group n-of subgroup-number buyers
+    let lowest-buyer min-one-of comparison-group [ peaches-iqf_price-to-buy ]
+    let highest-buyer max-one-of comparison-group [ peaches-iqf_price-to-buy ]
+    ask lowest-buyer [ set peaches-iqf_price-to-buy ( peaches-iqf_price-to-buy * 1.1 ) ]      
+    ask highest-buyer [ set peaches-iqf_price-to-buy ( peaches-iqf_price-to-buy * .9 ) ] 
+    ]
+  
+end
+
+to-report contractSpaceAvailable_peachesIqf [ buyers  debug ]
+  
+  ask buyers [
+    set peaches-iqf_contract-space-available ( peaches-iqf_inventory-maximum - peaches-iqf_inventory-current ) 
+    if debug = TRUE [ print " " print agent-name print "contract space available: " print peaches-iqf_contract-space-available print " " ] ]
+  report buyers
+    
+end
+
+to setContracts_peachesIqf [ sellers  buyers  buyer_count  loyalty]
+  
+  if debug-mode = TRUE [ 
+    print " "
+    print "------------------------------------------------------"
+    print "CONTRACTING STEP:"
+    let tmp word sellers " sell to " 
+    print word tmp buyers
+    print "------------------------------------------------------" ]
+  
+  priceAdjustments_peachesIqf buyers buyer_count
+  
+  set buyers contractSpaceAvailable_peachesIqf buyers  debug-mode
+
+  ask sellers [
+    
+    if debug-mode = TRUE [ 
+        print " "  
+        print "-------------------------------------------------------"
+        print "beginning negotation"
+        print "-------------------------------------------------------"
+        print " " ]
+    
+    let peaches-iqf-quantity-estimate 0
+    let contracted-this-time 0
+
+    if sellers = peach_processors [ set peaches-iqf-quantity-estimate ( peaches-iqf_my-incoming-total * .8 ) ]
+    if sellers = distributors [ set peaches-iqf-quantity-estimate peaches-iqf_my-incoming-total ]
+    if debug-mode = TRUE [ 
+      print " "
+      print agent-name
+      print "estimated quantity available to contract this step (iqf-conventional-quantity-estimate):"
+      print peaches-iqf-quantity-estimate ]
+    
+    while [ ( peaches-iqf_promised < peaches-iqf-quantity-estimate ) and ( any? buyers with [ peaches-iqf_contract-space-available > 0 ] ) ] [
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "beginning while loop"
+        print "-------------------------------------------------------"
+        print " " 
+        print "we are thinking about buyers!"
+        print "seller name: "
+        print agent-name
+        print "seller id:"
+        print id
+        print "iqf-conventional_promised:"
+        print peaches-iqf_promised
+        print "iqf-conventional-quantity-estimate:"
+        print peaches-iqf-quantity-estimate ]
+
+      let buyers-with-capacity ( buyers with [ peaches-iqf_contract-space-available > 0 ] )
+      if debug-mode = true [
+        print " "
+        print "buyers with capacity:"
+        print buyers-with-capacity ]
+      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers ] ]  
+        [ set bidding_buyers buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers
+            print "who numbers of bidding buyers:"
+            print [who] of bidding_buyers ] ]
+      
+      let my-buyer n-of 1 ( bidding_buyers with-max [ peaches-iqf_price-to-buy ] )           
+   
+      set peaches-iqf_price-to-sell item 0 [ peaches-iqf_price-to-buy ] of my-buyer
+        if debug-mode = true [
+          print " "
+          print "price to buy:"
+          print [ peaches-iqf_price-to-buy ] of my-buyer]        
+        
+      let col-id id
+      let row-id 0
+      if debug-mode = true [
+        print " "
+        print "my buyer's name:"
+        print [ agent-name ] of my-buyer
+        print "my buyer's id:"
+        print [ id ] of my-buyer
+        print "my buyer's space available:"
+        print [ peaches-iqf_contract-space-available ] of my-buyer ]
+      ask my-buyer [
+        set row-id id ]
+ 
+      let rounded-price ( precision ( peaches-iqf_price-to-sell ) 2 )
+      table_set peach-table_iqf row-id col-id PEACH_PRICE rounded-price debug-mode        
+         
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "end of price negotatiations - moving on to quantity negotiation"
+        print "-------------------------------------------------------"
+        print " " ]
+              
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+      let contract-space-available item 0 ( [ peaches-iqf_contract-space-available ] of my-buyer )
+      let seller_peaches-available ( peaches-iqf-quantity-estimate - peaches-iqf_promised )
+        
+      ifelse contract-space-available >= seller_peaches-available
+        [ set contracted-this-time seller_peaches-available ]
+        [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]
+      
+      if debug-mode = TRUE [
+        print " "
+        print "updated yield promised"
+        print peaches-iqf_promised ]  
+        
+      table_create_and_sum peach-table_iqf row-id col-id PEACH_QUANTITY contracted-this-time debug-mode
+      table_create_and_sum peach-table_iqf row-id col-id PEACH_OUTSTANDING_QUANTITY contracted-this-time debug-mode
+        
+      if debug-mode = TRUE [
+        print " "
+        print "yield promised before this contract"
+        print peaches-iqf_promised
+        print "amount contracted this time"
+        print contracted-this-time ]
+        
+      set peaches-iqf_promised ( peaches-iqf_promised + contracted-this-time )   
+        
+      ask my-buyer [
+        set peaches-iqf_contract-space-available ( peaches-iqf_contract-space-available - contracted-this-time )
+        set peaches-iqf_my-incoming-total ( peaches-iqf_my-incoming-total + contracted-this-time)
+        if debug-mode = true [
+          print " "
+          print "my buyer's updated space available:"
+          print peaches-iqf_contract-space-available ] ]
+              
+      ]
+      
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "end of while loop"
+      print "-------------------------------------------------------"
+      print " " ]
+      
+      ]   
+    
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "END OF NEGOTIATIONS FOR THIS AGENT"
+      print "-------------------------------------------------------"
+      print " " ]
+ 
+  ]
+  
+  
+;     ------ (negotiations end here. final print statements below)
+  
+  
+  if debug-mode = TRUE [
+    print " "
+    print "CONTRACT NEGOTIATION RESULTS:"
+    print " "
+    print "printing price debug table:"
+    debugMatrix peach-table_iqf PEACH_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+    print "printing quantity debug table:"
+    debugMatrix peach-table_iqf PEACH_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+  ask buyers [ 
+      let tmp word id ": " 
+      print word tmp peaches-iqf_contract-space-available ] ]
+  
+end 
+
+

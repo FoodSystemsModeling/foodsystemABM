@@ -1,0 +1,51 @@
+
+;; this resets the storage of each agentset to 0 every year. peaches left in inventory at this point are sold on the open market. 
+
+
+to reset-storage_peaches [ agentset ]
+  
+  ask agentset [
+    
+    if agentset = peach_farmers [
+      set assets ( assets + ( peaches-conventional_inventory-current * peach-conventional_price-farmgate-altmark-avg ) )
+      set peaches-outside ( peaches-outside + peaches-conventional_inventory-current )
+      set peaches-conventional_inventory-current 0
+      
+      set assets ( assets + ( peaches-organic_inventory-current * peach-organic_price-farmgate-altmark-avg ) )
+      set peaches-outside ( peaches-outside + peaches-organic_inventory-current )
+      set peaches-organic_inventory-current 0
+      
+      set assets ( assets + ( peaches-seconds_inventory-current * peach-seconds_price-farmgate-wholesale-avg ) )
+      set peaches-outside ( peaches-outside + peaches-seconds_inventory-current )
+      set peaches-seconds_inventory-current 0
+      
+      set peaches-conventional_passthrough-annual 0
+      set peaches-organic_passthrough-annual 0
+      set peaches-seconds_passthrough-annual 0
+    ]
+    
+    if ( agentset = peach_processors ) [   
+      set peaches-seconds_inventory-current 0
+      ]
+    
+    if ( agentset = distributors ) [   
+      
+      set assets ( assets + ( peaches-out-of-state_inventory-current * peach-out-of-state_price-distributor-receives-avg ) )
+      set peaches-outside ( peaches-outside + peaches-out-of-state_inventory-current ) 
+      set peaches-out-of-state_inventory-current 0
+      
+      ]
+    if (agentset = dps_buyers ) [ 
+      set peaches-conventional_inventory-current 0 
+      set peaches-organic_inventory-current 0
+      set peaches-seconds_inventory-current 0 
+      set peaches-iqf_inventory-current 0  
+    ] 
+    
+    if ( agentset != distributors ) and ( agentset != dps_buyers ) and ( agentset != peach_processors ) and ( agentset != peach_farmers ) [   
+      set peaches-conventional_inventory-current 0      
+      set peaches-organic_inventory-current 0
+      ] 
+  ]
+  
+end

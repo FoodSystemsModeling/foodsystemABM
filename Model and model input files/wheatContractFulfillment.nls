@@ -1,0 +1,780 @@
+
+;This procedure carries out contract fulfillment amongst different agents in the wheat supply chain. wheat and cash are exchanged based on contracts set during
+;the contract negotiation phase. wheat sent and outstanding quantity table entries are updated to reflect these changes. 
+
+;Table notes:
+;table set used to update price
+;table sum used to update quantity
+
+to fulfillContracts_hrwConventionalWheat [ sellers buyers ] 
+  
+  ask sellers [
+    
+    let col-id id
+    let product-avail-to-sell wheat-hrw-conventional_inventory-current
+    let amount-exchanged 0
+    let price-exchanged 0
+    let price-tag 0
+
+    ask buyers [
+      if product-avail-to-sell > 0 [                                                                                         ; Looping through buyers without updating the inventory to sell was causing the sale of negative flour   rb 06/14/2022
+        let row-id id
+          
+        if check-entry wheat-table_hrw-conventional row-id col-id WHEAT_OUTSTANDING_QUANTITY WHEAT_QUANTITY WHEAT_SENT [
+            
+          ifelse check-bigger-than-entry wheat-table_hrw-conventional  row-id col-id WHEAT_OUTSTANDING_QUANTITY product-avail-to-sell
+            [ 
+              set amount-exchanged report-value wheat-table_hrw-conventional  row-id col-id WHEAT_OUTSTANDING_QUANTITY 
+            ]
+            [ 
+              set amount-exchanged product-avail-to-sell 
+            ]
+            
+          set price-exchanged report-value wheat-table_hrw-conventional row-id col-id WHEAT_PRICE
+          if debug-mode = true [ 
+            print " "
+            print "--------------------------------------------------------------"
+            print "price exchanged:" print price-exchanged 
+          ]
+              
+          set price-tag (price-exchanged * amount-exchanged)
+          if debug-mode = true [ print "price tag: " print price-tag ]
+    
+          ; set buyer assets and inventory
+          if debug-mode = true [ print "buyer assets before: " print assets ]
+          
+          set assets (assets - price-tag)
+          if debug-mode = true [
+            print "buyer assets after:" print assets
+            print "buyer inventory before:" print wheat-hrw-conventional_inventory-current
+          ]
+          
+          set wheat-hrw-conventional_inventory-current (wheat-hrw-conventional_inventory-current + amount-exchanged)
+          if debug-mode = true [ print "buyer inventory after:" print wheat-hrw-conventional_inventory-current ]
+    
+          ; set seller assets and inventory
+          ask myself [
+            if debug-mode = true [ print "seller assets before:" print assets ]
+            set assets (assets + price-tag)
+            if debug-mode = true [
+              print "seller assets after:" print assets
+              print "seller inventory before:" print wheat-hrw-conventional_inventory-current
+            ]
+            set wheat-hrw-conventional_inventory-current (wheat-hrw-conventional_inventory-current - amount-exchanged)
+            set product-avail-to-sell wheat-hrw-conventional_inventory-current                                                                                 ; Added to update inventory to sell     rb  06/14/2022
+            if debug-mode = true [
+                print "seller inventory after:" print wheat-hrw-conventional_inventory-current
+                print " "
+                print "--------------------------------------------------------------"
+            ]
+            table_sum wheat-table_hrw-conventional  row-id col-id WHEAT_SENT amount-exchanged debug-mode  
+            update-outstanding-quantity wheat-table_hrw-conventional  row-id col-id WHEAT_OUTSTANDING_QUANTITY WHEAT_QUANTITY WHEAT_SENT
+          ]
+        ]
+      ]
+    ]
+  ]
+  
+  if debug-mode = TRUE [
+    print "wheat price table"
+    debugMatrix wheat-table_hrw-conventional  WHEAT_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat quantity table"
+    debugMatrix wheat-table_hrw-conventional  WHEAT_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    debugMatrix wheat-table_hrw-conventional  WHEAT_SENT ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat outstanding quantity table"
+    debugMatrix wheat-table_hrw-conventional  WHEAT_OUTSTANDING_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) ) 
+  ]
+
+end 
+
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+
+
+to fulfillContracts_hrwConventionalFlour [ sellers buyers ]  
+  
+ask sellers[
+    let col-id id
+    let product-avail-to-sell wheat-hrw-conventional-flour_inventory-current
+    let amount-exchanged 0
+    let price-exchanged 0
+    let price-tag 0
+
+    ask buyers [
+      if product-avail-to-sell > 0 [                                                                                         ; Looping through buyers without updating the inventory to sell was causing the sale of negative flour   rb 06/14/2022
+        let row-id id
+        
+        if check-entry wheat-table_hrw-conventional-flour  row-id col-id WHEAT_OUTSTANDING_QUANTITY WHEAT_QUANTITY WHEAT_SENT [
+          
+          ifelse check-bigger-than-entry wheat-table_hrw-conventional-flour  row-id col-id WHEAT_OUTSTANDING_QUANTITY product-avail-to-sell
+          [ set amount-exchanged report-value wheat-table_hrw-conventional-flour  row-id col-id WHEAT_OUTSTANDING_QUANTITY 
+            if debug-mode = true [
+              print "WWW amount exchanged:" type who  type "   "  print amount-exchanged
+            ] 
+          ]
+          [ set amount-exchanged product-avail-to-sell
+            if debug-mode = true [
+              print "XXX amount exchanged:"  type who  type "   " print amount-exchanged
+            ] 
+          ]
+          
+          if buyers = dps_buyers [ set flour-dps ( flour-dps + amount-exchanged ) ]
+          
+          set price-exchanged report-value wheat-table_hrw-conventional-flour  row-id col-id WHEAT_PRICE
+          if debug-mode = true [ 
+            print " "
+            print "--------------------------------------------------------------"
+            print "price exchanged:" print price-exchanged ]
+  
+            
+            set price-tag (price-exchanged * amount-exchanged)
+            if debug-mode = true [
+              print "price tag:" print price-tag]
+  
+            ;set buyer assets and inventory
+            if debug-mode = true [
+              print "buyer assets before:" print assets]
+            set assets (assets - price-tag)
+            if debug-mode = true [
+              print "buyer assets after:" print assets]
+            if debug-mode = true [
+              print "buyer inventory before:" print wheat-hrw-conventional-flour_inventory-current]
+            set wheat-hrw-conventional-flour_inventory-current (wheat-hrw-conventional-flour_inventory-current + amount-exchanged)
+            if debug-mode = true [
+              print "buyer inventory after:" print wheat-hrw-conventional-flour_inventory-current]
+  
+            ;set seller assets and inventory
+            ask myself [
+              if debug-mode = true [
+                print "seller assets before:" print assets]
+              set assets (assets + price-tag)
+              if debug-mode = true [
+                print "seller assets after:" print assets]
+              if debug-mode = true [
+                print "seller inventory before:" print wheat-hrw-conventional-flour_inventory-current]
+              set wheat-hrw-conventional-flour_inventory-current (wheat-hrw-conventional-flour_inventory-current - amount-exchanged)
+              set product-avail-to-sell wheat-hrw-conventional-flour_inventory-current                                                                                 ; Added to update inventory to sell     rb  06/14/2022
+              if debug-mode = true [
+                print "seller inventory after:" print wheat-hrw-conventional-flour_inventory-current
+                print " "
+                print "--------------------------------------------------------------"]
+             table_sum wheat-table_hrw-conventional-flour  row-id col-id WHEAT_SENT amount-exchanged debug-mode  
+             update-outstanding-quantity wheat-table_hrw-conventional-flour  row-id col-id WHEAT_OUTSTANDING_QUANTITY WHEAT_QUANTITY WHEAT_SENT
+            ]
+          ]
+      ]
+    ]
+  ]
+  
+  if debug-mode = TRUE [
+    print "wheat price table"
+    debugMatrix wheat-table_hrw-conventional-flour  WHEAT_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat quantity table"
+    debugMatrix wheat-table_hrw-conventional-flour  WHEAT_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat sent table"
+    debugMatrix wheat-table_hrw-conventional-flour  WHEAT_SENT ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat outstanding quantity table"
+    debugMatrix wheat-table_hrw-conventional-flour  WHEAT_OUTSTANDING_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) ) ]
+
+end 
+
+
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+
+
+to fulfillContracts_hrwConventionalBread [ sellers buyers ] 
+  
+ask sellers[
+    let col-id id
+    let product-avail-to-sell wheat-hrw-conventional-bread_inventory-current
+    let amount-exchanged 0
+    let price-exchanged 0
+    let price-tag 0
+
+    ask buyers[
+      if product-avail-to-sell > 0 [                                                                                         ; Looping through buyers without updating the inventory to sell was causing the sale of negative flour   rb 06/14/2022  (ALTHOUGH NOT IN THIS CASE, BUT FOR COMPLETENESS)
+        let row-id id
+        
+        if check-entry wheat-table_hrw-conventional-bread  row-id col-id WHEAT_OUTSTANDING_QUANTITY WHEAT_QUANTITY WHEAT_SENT [
+          
+          ifelse check-bigger-than-entry wheat-table_hrw-conventional-bread  row-id col-id WHEAT_OUTSTANDING_QUANTITY product-avail-to-sell
+  
+          [ set amount-exchanged report-value wheat-table_hrw-conventional-bread  row-id col-id WHEAT_OUTSTANDING_QUANTITY 
+            if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+          [ set amount-exchanged product-avail-to-sell
+            if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+          
+          if buyers = dps_buyers [ set bread-dps ( bread-dps + amount-exchanged ) ]
+          
+            set price-exchanged report-value wheat-table_hrw-conventional-bread  row-id col-id WHEAT_PRICE
+          if debug-mode = true [ 
+            print " "
+            print "--------------------------------------------------------------"
+            print "price exchanged:" print price-exchanged ]
+  
+            
+            set price-tag (price-exchanged * amount-exchanged)
+            if debug-mode = true [
+              print "price tag:" print price-tag]
+  
+            ;set buyer assets and inventory
+            if debug-mode = true [
+              print "buyer assets before:" print assets]
+            set assets (assets - price-tag)
+            if debug-mode = true [
+              print "buyer assets after:" print assets]
+            if debug-mode = true [
+              print "buyer inventory before:" print wheat-hrw-conventional-bread_inventory-current]
+            set wheat-hrw-conventional-bread_inventory-current (wheat-hrw-conventional-bread_inventory-current + amount-exchanged)
+            if debug-mode = true [
+              print "buyer inventory after:" print wheat-hrw-conventional-bread_inventory-current]
+  
+            ;set seller assets and inventory
+            ask myself [
+              if debug-mode = true [
+                print "seller assets before:" print assets]
+              set assets (assets + price-tag)
+              if debug-mode = true [
+                print "seller assets after:" print assets]
+              if debug-mode = true [
+                print "seller inventory before:" print wheat-hrw-conventional-bread_inventory-current]
+              set wheat-hrw-conventional-bread_inventory-current (wheat-hrw-conventional-bread_inventory-current - amount-exchanged)
+              set product-avail-to-sell wheat-hrw-conventional-bread_inventory-current                                                                                 ; Added to update inventory to sell     rb  06/14/2022
+              if debug-mode = true [
+                print "seller inventory after:" print wheat-hrw-conventional-bread_inventory-current
+                print " "
+                print "--------------------------------------------------------------"]
+             table_sum wheat-table_hrw-conventional-bread  row-id col-id WHEAT_SENT amount-exchanged debug-mode  
+             update-outstanding-quantity wheat-table_hrw-conventional-bread  row-id col-id WHEAT_OUTSTANDING_QUANTITY WHEAT_QUANTITY WHEAT_SENT
+            ]
+          ]
+      ]
+    ]
+  ]
+  
+  if debug-mode = TRUE [
+    print "wheat price table"
+    debugMatrix wheat-table_hrw-conventional-bread  WHEAT_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat quantity table"
+    debugMatrix wheat-table_hrw-conventional-bread  WHEAT_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat sent table"
+    debugMatrix wheat-table_hrw-conventional-bread  WHEAT_SENT ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat outstanding quantity table"
+    debugMatrix wheat-table_hrw-conventional-bread  WHEAT_OUTSTANDING_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) ) ]
+
+end 
+
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+
+to fulfillContracts_hrwOrganicWheat [ sellers buyers ] 
+  
+ask sellers[
+    let col-id id
+    let product-avail-to-sell wheat-hrw-organic_inventory-current
+    let amount-exchanged 0
+    let price-exchanged 0
+    let price-tag 0
+
+    ask buyers[
+      if product-avail-to-sell > 0 [                                                                                         ; Looping through buyers without updating the inventory to sell was causing the sale of negative flour   rb 06/14/2022
+        let row-id id
+        
+        if check-entry wheat-table_hrw-organic  row-id col-id WHEAT_OUTSTANDING_QUANTITY WHEAT_QUANTITY WHEAT_SENT [
+          
+          ifelse check-bigger-than-entry wheat-table_hrw-organic  row-id col-id WHEAT_OUTSTANDING_QUANTITY product-avail-to-sell
+         
+          [ set amount-exchanged report-value wheat-table_hrw-organic  row-id col-id WHEAT_OUTSTANDING_QUANTITY 
+            if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+          [ set amount-exchanged product-avail-to-sell
+            if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+          
+            set price-exchanged report-value wheat-table_hrw-organic  row-id col-id WHEAT_PRICE
+          if debug-mode = true [ 
+            print " "
+            print "--------------------------------------------------------------"
+            print "price exchanged:" print price-exchanged ]
+  
+            
+            set price-tag (price-exchanged * amount-exchanged)
+            if debug-mode = true [
+              print "price tag:" print price-tag]
+  
+            ;set buyer assets and inventory
+            if debug-mode = true [
+              print "buyer assets before:" print assets]
+            set assets (assets - price-tag)
+            if debug-mode = true [
+              print "buyer assets after:" print assets]
+            if debug-mode = true [
+              print "buyer inventory before:" print wheat-hrw-organic_inventory-current]
+            set wheat-hrw-organic_inventory-current (wheat-hrw-organic_inventory-current + amount-exchanged)
+            if debug-mode = true [
+              print "buyer inventory after:" print wheat-hrw-organic_inventory-current]
+  
+            ;set seller assets and inventory
+            ask myself [
+              if debug-mode = true [
+                print "seller assets before:" print assets]
+              set assets (assets + price-tag)
+              if debug-mode = true [
+                print "seller assets after:" print assets]
+              if debug-mode = true [
+                print "seller inventory before:" print wheat-hrw-organic_inventory-current]
+              set wheat-hrw-organic_inventory-current (wheat-hrw-organic_inventory-current - amount-exchanged)
+              set product-avail-to-sell wheat-hrw-organic_inventory-current                                                                                 ; Added to update inventory to sell     rb  06/14/2022
+              if debug-mode = true [
+                print "seller inventory after:" print wheat-hrw-organic_inventory-current
+                print " "
+                print "--------------------------------------------------------------"]
+             table_sum wheat-table_hrw-organic  row-id col-id WHEAT_SENT amount-exchanged debug-mode  
+             update-outstanding-quantity wheat-table_hrw-organic  row-id col-id WHEAT_OUTSTANDING_QUANTITY WHEAT_QUANTITY WHEAT_SENT
+            ]
+          ]
+      ]
+    ]
+  ]
+  
+  if debug-mode = TRUE [
+    print "wheat price table"
+    debugMatrix wheat-table_hrw-organic  WHEAT_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat quantity table"
+    debugMatrix wheat-table_hrw-organic  WHEAT_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat sent table"
+    debugMatrix wheat-table_hrw-organic  WHEAT_SENT ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat outstanding quantity table"
+    debugMatrix wheat-table_hrw-organic  WHEAT_OUTSTANDING_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) ) ]
+
+end 
+
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+
+
+to fulfillContracts_hrwOrganicFlour [ sellers buyers ]
+  
+ask sellers[
+    let col-id id
+    let product-avail-to-sell wheat-hrw-organic-flour_inventory-current
+
+    let amount-exchanged 0
+    let price-exchanged 0
+    let price-tag 0
+
+    ask buyers[
+      if product-avail-to-sell > 0 [                                                                                         ; Looping through buyers without updating the inventory to sell was causing the sale of negative flour   rb 06/14/2022
+        let row-id id
+        
+        if check-entry wheat-table_hrw-organic-flour  row-id col-id WHEAT_OUTSTANDING_QUANTITY WHEAT_QUANTITY WHEAT_SENT [
+          
+          ifelse check-bigger-than-entry wheat-table_hrw-organic-flour  row-id col-id WHEAT_OUTSTANDING_QUANTITY product-avail-to-sell
+          
+          [ set amount-exchanged report-value wheat-table_hrw-organic-flour  row-id col-id WHEAT_OUTSTANDING_QUANTITY 
+            if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+          [ set amount-exchanged product-avail-to-sell
+            if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+          
+        if buyers = dps_buyers [ set flour-dps ( flour-dps + amount-exchanged ) ]
+          
+            set price-exchanged report-value wheat-table_hrw-organic-flour  row-id col-id WHEAT_PRICE
+          if debug-mode = true [ 
+            print " "
+            print "--------------------------------------------------------------"
+            print "price exchanged:" print price-exchanged ]
+  
+            
+            set price-tag (price-exchanged * amount-exchanged)
+            if debug-mode = true [
+              print "price tag:" print price-tag]
+  
+            ;set buyer assets and inventory
+            if debug-mode = true [
+              print "buyer assets before:" print assets]
+            set assets (assets - price-tag)
+            if debug-mode = true [
+              print "buyer assets after:" print assets]
+            if debug-mode = true [
+              print "buyer inventory before:" print wheat-hrw-organic-flour_inventory-current]
+            set wheat-hrw-organic-flour_inventory-current (wheat-hrw-organic-flour_inventory-current + amount-exchanged)
+            if debug-mode = true [
+              print "buyer inventory after:" print wheat-hrw-organic-flour_inventory-current]
+  
+            ;set seller assets and inventory
+            ask myself [
+              if debug-mode = true [
+                print "seller assets before:" print assets]
+              set assets (assets + price-tag)
+              if debug-mode = true [
+                print "seller assets after:" print assets]
+              if debug-mode = true [
+                print "seller inventory before:" print wheat-hrw-organic-flour_inventory-current]
+              set wheat-hrw-organic-flour_inventory-current (wheat-hrw-organic-flour_inventory-current - amount-exchanged)
+              set product-avail-to-sell wheat-hrw-organic-flour_inventory-current                                                                                 ; Added to update inventory to sell     rb  06/14/2022
+              if debug-mode = true [
+                print "seller inventory after:" print wheat-hrw-organic-flour_inventory-current
+                print " "
+                print "--------------------------------------------------------------"]
+             table_sum wheat-table_hrw-organic-flour  row-id col-id WHEAT_SENT amount-exchanged debug-mode  
+             update-outstanding-quantity wheat-table_hrw-organic-flour  row-id col-id WHEAT_OUTSTANDING_QUANTITY WHEAT_QUANTITY WHEAT_SENT
+            ]
+          ]
+      ]
+    ]
+  ]
+  
+  if debug-mode = TRUE [
+    print "wheat price table"
+    debugMatrix wheat-table_hrw-organic-flour  WHEAT_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat quantity table"
+    debugMatrix wheat-table_hrw-organic-flour  WHEAT_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat sent table"
+    debugMatrix wheat-table_hrw-organic-flour  WHEAT_SENT ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat outstanding quantity table"
+    debugMatrix wheat-table_hrw-organic-flour  WHEAT_OUTSTANDING_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) ) ]
+
+end 
+
+
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+
+
+to fulfillContracts_hrwOrganicBread [ sellers buyers ] 
+  
+ask sellers[
+    let col-id id
+    let product-avail-to-sell wheat-hrw-organic-bread_inventory-current
+    let amount-exchanged 0
+    let price-exchanged 0
+    let price-tag 0
+
+    ask buyers[
+      if product-avail-to-sell > 0 [                                                                                         ; Looping through buyers without updating the inventory to sell was causing the sale of negative flour   rb 06/14/2022
+        let row-id id
+        
+        if check-entry wheat-table_hrw-organic-bread  row-id col-id WHEAT_OUTSTANDING_QUANTITY WHEAT_QUANTITY WHEAT_SENT [
+          
+          ifelse check-bigger-than-entry wheat-table_hrw-organic-bread  row-id col-id WHEAT_OUTSTANDING_QUANTITY product-avail-to-sell
+   
+          [ set amount-exchanged report-value wheat-table_hrw-organic-bread  row-id col-id WHEAT_OUTSTANDING_QUANTITY 
+            if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+          [ set amount-exchanged product-avail-to-sell
+            if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+          
+          if buyers = dps_buyers [ set bread-dps ( bread-dps + amount-exchanged ) ]        
+          
+            set price-exchanged report-value wheat-table_hrw-organic-bread  row-id col-id WHEAT_PRICE
+          if debug-mode = true [ 
+            print " "
+            print "--------------------------------------------------------------"
+            print "price exchanged:" print price-exchanged ]
+  
+            
+            set price-tag (price-exchanged * amount-exchanged)
+            if debug-mode = true [
+              print "price tag:" print price-tag]
+  
+            ;set buyer assets and inventory
+            if debug-mode = true [
+              print "buyer assets before:" print assets]
+            set assets (assets - price-tag)
+            if debug-mode = true [
+              print "buyer assets after:" print assets]
+            if debug-mode = true [
+              print "buyer inventory before:" print wheat-hrw-organic-bread_inventory-current]
+            set wheat-hrw-organic-bread_inventory-current (wheat-hrw-organic-bread_inventory-current + amount-exchanged)
+            if debug-mode = true [
+              print "buyer inventory after:" print wheat-hrw-organic-bread_inventory-current]
+  
+            ;set seller assets and inventory
+            ask myself [
+              if debug-mode = true [
+                print "seller assets before:" print assets]
+              set assets (assets + price-tag)
+              if debug-mode = true [
+                print "seller assets after:" print assets]
+              if debug-mode = true [
+                print "seller inventory before:" print wheat-hrw-organic-bread_inventory-current]
+              set wheat-hrw-organic-bread_inventory-current (wheat-hrw-organic-bread_inventory-current - amount-exchanged)
+              set product-avail-to-sell wheat-hrw-organic-bread_inventory-current                                                                                 ; Added to update inventory to sell     rb  06/14/2022
+              if debug-mode = true [
+                print "seller inventory after:" print wheat-hrw-organic-bread_inventory-current
+                print " "
+                print "--------------------------------------------------------------"]
+             table_sum wheat-table_hrw-organic-bread  row-id col-id WHEAT_SENT amount-exchanged debug-mode  
+             update-outstanding-quantity wheat-table_hrw-organic-bread  row-id col-id WHEAT_OUTSTANDING_QUANTITY WHEAT_QUANTITY WHEAT_SENT
+            ]
+          ]
+      ]
+    ]
+  ]
+  
+  if debug-mode = TRUE [
+    print "wheat price table"
+    debugMatrix wheat-table_hrw-organic-bread  WHEAT_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat quantity table"
+    debugMatrix wheat-table_hrw-organic-bread  WHEAT_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat sent table"
+    debugMatrix wheat-table_hrw-organic-bread  WHEAT_SENT ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat outstanding quantity table"
+    debugMatrix wheat-table_hrw-organic-bread  WHEAT_OUTSTANDING_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) ) ]
+
+end 
+
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+
+to fulfillContracts_snowmassConventionalWheat [ sellers buyers ] 
+  
+ask sellers[
+    let col-id id
+    let product-avail-to-sell wheat-snowmass-conventional_inventory-current
+    let amount-exchanged 0
+    let price-exchanged 0
+    let price-tag 0
+
+    ask buyers[
+      if product-avail-to-sell > 0 [                                                                                         ; Looping through buyers without updating the inventory to sell was causing the sale of negative flour   rb 06/14/2022        
+        let row-id id
+        
+        if check-entry wheat-table_snowmass-conventional  row-id col-id WHEAT_OUTSTANDING_QUANTITY WHEAT_QUANTITY WHEAT_SENT [
+          
+          ifelse check-bigger-than-entry wheat-table_snowmass-conventional  row-id col-id WHEAT_OUTSTANDING_QUANTITY product-avail-to-sell
+       
+          [ set amount-exchanged report-value wheat-table_snowmass-conventional  row-id col-id WHEAT_OUTSTANDING_QUANTITY 
+            if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+          [ set amount-exchanged product-avail-to-sell
+            if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+          
+            set price-exchanged report-value wheat-table_snowmass-conventional  row-id col-id WHEAT_PRICE
+          if debug-mode = true [ 
+            print " "
+            print "--------------------------------------------------------------"
+            print "price exchanged:" print price-exchanged ]
+  
+            
+            set price-tag (price-exchanged * amount-exchanged)
+            if debug-mode = true [
+              print "price tag:" print price-tag]
+  
+            ;set buyer assets and inventory
+            if debug-mode = true [
+              print "buyer assets before:" print assets]
+            set assets (assets - price-tag)
+            if debug-mode = true [
+              print "buyer assets after:" print assets]
+            if debug-mode = true [
+              print "buyer inventory before:" print wheat-snowmass-conventional_inventory-current]
+            set wheat-snowmass-conventional_inventory-current (wheat-snowmass-conventional_inventory-current + amount-exchanged)
+            if debug-mode = true [
+              print "buyer inventory after:" print wheat-snowmass-conventional_inventory-current]
+  
+            ;set seller assets and inventory
+            ask myself [
+              if debug-mode = true [
+                print "seller assets before:" print assets]
+              set assets (assets + price-tag)
+              if debug-mode = true [
+                print "seller assets after:" print assets]
+              if debug-mode = true [
+                print "seller inventory before:" print wheat-snowmass-conventional_inventory-current]
+              set wheat-snowmass-conventional_inventory-current (wheat-snowmass-conventional_inventory-current - amount-exchanged)
+              set product-avail-to-sell wheat-snowmass-conventional_inventory-current                                                                                 ; Added to update inventory to sell     rb  06/14/2022
+              if debug-mode = true [
+                print "seller inventory after:" print wheat-snowmass-conventional_inventory-current
+                print " "
+                print "--------------------------------------------------------------"]
+             table_sum wheat-table_snowmass-conventional  row-id col-id WHEAT_SENT amount-exchanged debug-mode  
+             update-outstanding-quantity wheat-table_snowmass-conventional  row-id col-id WHEAT_OUTSTANDING_QUANTITY WHEAT_QUANTITY WHEAT_SENT
+            ]
+          ]
+      ]
+    ]
+  ]
+  
+  if debug-mode = TRUE [
+    print "wheat price table"
+    debugMatrix wheat-table_snowmass-conventional  WHEAT_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat quantity table"
+    debugMatrix wheat-table_snowmass-conventional  WHEAT_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat sent table"
+    debugMatrix wheat-table_snowmass-conventional  WHEAT_SENT ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat outstanding quantity table"
+    debugMatrix wheat-table_snowmass-conventional  WHEAT_OUTSTANDING_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) ) ]
+
+end 
+
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+
+
+to fulfillContracts_snowmassConventionalFlour [ sellers buyers ] 
+  
+ask sellers[
+    let col-id id
+    let product-avail-to-sell wheat-snowmass-conventional-flour_inventory-current
+    let amount-exchanged 0
+    let price-exchanged 0
+    let price-tag 0
+
+    ask buyers[
+      if product-avail-to-sell > 0 [                                                                                         ; Looping through buyers without updating the inventory to sell was causing the sale of negative flour   rb 06/14/2022
+        let row-id id
+        
+        if check-entry wheat-table_snowmass-conventional-flour  row-id col-id WHEAT_OUTSTANDING_QUANTITY WHEAT_QUANTITY WHEAT_SENT [
+          
+          ifelse check-bigger-than-entry wheat-table_snowmass-conventional-flour  row-id col-id WHEAT_OUTSTANDING_QUANTITY product-avail-to-sell
+        
+          [ set amount-exchanged report-value wheat-table_snowmass-conventional-flour  row-id col-id WHEAT_OUTSTANDING_QUANTITY 
+            if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+          [ set amount-exchanged product-avail-to-sell
+            if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+          
+        if buyers = dps_buyers [ set flour-dps ( flour-dps + amount-exchanged ) ]
+          
+            set price-exchanged report-value wheat-table_snowmass-conventional-flour  row-id col-id WHEAT_PRICE
+          if debug-mode = true [ 
+            print " "
+            print "--------------------------------------------------------------"
+            print "price exchanged:" print price-exchanged ]
+  
+            
+            set price-tag (price-exchanged * amount-exchanged)
+            if debug-mode = true [
+              print "price tag:" print price-tag]
+  
+            ;set buyer assets and inventory
+            if debug-mode = true [
+              print "buyer assets before:" print assets]
+            set assets (assets - price-tag)
+            if debug-mode = true [
+              print "buyer assets after:" print assets]
+            if debug-mode = true [
+              print "buyer inventory before:" print wheat-snowmass-conventional-flour_inventory-current]
+            set wheat-snowmass-conventional-flour_inventory-current (wheat-snowmass-conventional-flour_inventory-current + amount-exchanged)
+            if debug-mode = true [
+              print "buyer inventory after:" print wheat-snowmass-conventional-flour_inventory-current]
+  
+            ;set seller assets and inventory
+            ask myself [
+              if debug-mode = true [
+                print "seller assets before:" print assets]
+              set assets (assets + price-tag)
+              if debug-mode = true [
+                print "seller assets after:" print assets]
+              if debug-mode = true [
+                print "seller inventory before:" print wheat-snowmass-conventional-flour_inventory-current]
+              set wheat-snowmass-conventional-flour_inventory-current (wheat-snowmass-conventional-flour_inventory-current - amount-exchanged)
+              set product-avail-to-sell wheat-snowmass-conventional-flour_inventory-current                                                                                 ; Added to update inventory to sell     rb  06/14/2022
+              if debug-mode = true [
+                print "seller inventory after:" print wheat-snowmass-conventional-flour_inventory-current
+                print " "
+                print "--------------------------------------------------------------"]
+             table_sum wheat-table_snowmass-conventional-flour  row-id col-id WHEAT_SENT amount-exchanged debug-mode  
+             update-outstanding-quantity wheat-table_snowmass-conventional-flour  row-id col-id WHEAT_OUTSTANDING_QUANTITY WHEAT_QUANTITY WHEAT_SENT
+            ]
+          ]
+      ]
+    ]
+  ]
+  
+  if debug-mode = TRUE [
+    print "wheat price table"
+    debugMatrix wheat-table_snowmass-conventional-flour  WHEAT_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat quantity table"
+    debugMatrix wheat-table_snowmass-conventional-flour  WHEAT_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat sent table"
+    debugMatrix wheat-table_snowmass-conventional-flour  WHEAT_SENT ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat outstanding quantity table"
+    debugMatrix wheat-table_snowmass-conventional-flour  WHEAT_OUTSTANDING_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) ) ]
+
+end 
+
+
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+
+
+to fulfillContracts_snowmassConventionalBread [ sellers buyers ] 
+  
+ask sellers[
+    let col-id id
+    let product-avail-to-sell wheat-snowmass-conventional-bread_inventory-current
+    let amount-exchanged 0
+    let price-exchanged 0
+    let price-tag 0
+
+    ask buyers[
+      if product-avail-to-sell > 0 [                                                                                         ; Looping through buyers without updating the inventory to sell was causing the sale of negative flour   rb 06/14/2022
+        let row-id id
+        
+        if check-entry wheat-table_snowmass-conventional-bread  row-id col-id WHEAT_OUTSTANDING_QUANTITY WHEAT_QUANTITY WHEAT_SENT [
+          
+          ifelse check-bigger-than-entry wheat-table_snowmass-conventional-bread  row-id col-id WHEAT_OUTSTANDING_QUANTITY product-avail-to-sell
+        
+          [ set amount-exchanged report-value wheat-table_snowmass-conventional-bread  row-id col-id WHEAT_OUTSTANDING_QUANTITY 
+            if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+          [ set amount-exchanged product-avail-to-sell
+            if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+          
+          if buyers = dps_buyers [ set bread-dps ( bread-dps + amount-exchanged ) ]        
+          
+            set price-exchanged report-value wheat-table_snowmass-conventional-bread  row-id col-id WHEAT_PRICE
+          if debug-mode = true [ 
+            print " "
+            print "--------------------------------------------------------------"
+            print "price exchanged:" print price-exchanged ]
+  
+            
+            set price-tag (price-exchanged * amount-exchanged)
+            if debug-mode = true [
+              print "price tag:" print price-tag]
+  
+            ;set buyer assets and inventory
+            if debug-mode = true [
+              print "buyer assets before:" print assets]
+            set assets (assets - price-tag)
+            if debug-mode = true [
+              print "buyer assets after:" print assets]
+            if debug-mode = true [
+              print "buyer inventory before:" print wheat-snowmass-conventional-bread_inventory-current]
+            set wheat-snowmass-conventional-bread_inventory-current (wheat-snowmass-conventional-bread_inventory-current + amount-exchanged)
+            if debug-mode = true [
+              print "buyer inventory after:" print wheat-snowmass-conventional-bread_inventory-current]
+  
+            ;set seller assets and inventory
+            ask myself [
+              if debug-mode = true [
+                print "seller assets before:" print assets]
+              set assets (assets + price-tag)
+              if debug-mode = true [
+                print "seller assets after:" print assets]
+              if debug-mode = true [
+                print "seller inventory before:" print wheat-snowmass-conventional-bread_inventory-current]
+              set wheat-snowmass-conventional-bread_inventory-current (wheat-snowmass-conventional-bread_inventory-current - amount-exchanged)
+              set product-avail-to-sell wheat-snowmass-conventional-bread_inventory-current                                                                                 ; Added to update inventory to sell     rb  06/14/2022
+              if debug-mode = true [
+                print "seller inventory after:" print wheat-snowmass-conventional-bread_inventory-current
+                print " "
+                print "--------------------------------------------------------------"]
+             table_sum wheat-table_snowmass-conventional-bread  row-id col-id WHEAT_SENT amount-exchanged debug-mode  
+             update-outstanding-quantity wheat-table_snowmass-conventional-bread  row-id col-id WHEAT_OUTSTANDING_QUANTITY WHEAT_QUANTITY WHEAT_SENT
+            ]
+          ]
+      ]
+    ]
+  ]
+  
+  if debug-mode = TRUE [
+    print "wheat price table"
+    debugMatrix wheat-table_snowmass-conventional-bread  WHEAT_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat quantity table"
+    debugMatrix wheat-table_snowmass-conventional-bread  WHEAT_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat sent table"
+    debugMatrix wheat-table_snowmass-conventional-bread  WHEAT_SENT ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "wheat outstanding quantity table"
+    debugMatrix wheat-table_snowmass-conventional-bread  WHEAT_OUTSTANDING_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) ) ]
+
+end 
+

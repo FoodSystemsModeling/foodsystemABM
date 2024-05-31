@@ -1,0 +1,56 @@
+globals [
+  
+  ;; potatoes
+  POTATO_PRICE
+  POTATO_QUANTITY
+  POTATO_SENT
+  POTATO_OUTSTANDING_QUANTITY
+  
+  ;; wheat
+  WHEAT_PRICE
+  WHEAT_QUANTITY
+  WHEAT_SENT
+  WHEAT_OUTSTANDING_QUANTITY
+  
+  ;; peaches
+  PEACH_PRICE
+  PEACH_QUANTITY
+  PEACH_SENT
+  PEACH_OUTSTANDING_QUANTITY
+  
+ ;; beef to come
+  BEEF_PRICE
+  BEEF_QUANTITY
+  BEEF_SENT
+  BEEF_OUTSTANDING_QUANTITY
+  
+ ]
+  
+
+to setup-static-names  
+  
+  ;; potatoes
+  set POTATO_PRICE "PotatoPrice"
+  set POTATO_QUANTITY "PotatoQuantity"
+  set POTATO_SENT "PotatoSent"
+  set POTATO_OUTSTANDING_QUANTITY "PotatoOutstandingQuantity"
+ 
+  ;; wheat 
+  set WHEAT_PRICE "WheatPrice"
+  set WHEAT_QUANTITY "WheatQuantity"
+  set WHEAT_SENT "WheatSent"
+  set WHEAT_OUTSTANDING_QUANTITY "WheatOutstandingQuantity"
+ 
+  ;; peaches 
+  set PEACH_PRICE "PeachPrice"
+  set PEACH_QUANTITY "PeachQuantity"
+  set PEACH_SENT "PeachSent"
+  set PEACH_OUTSTANDING_QUANTITY "PeachOutstandingQuantity"
+  
+  ;; beef to come
+  set BEEF_PRICE "BeefPrice"
+  set BEEF_QUANTITY "BeefQuantity"
+  set BEEF_SENT "BeefSent"
+  set BEEF_OUTSTANDING_QUANTITY "BeefOutstandingQuantity"
+  
+end

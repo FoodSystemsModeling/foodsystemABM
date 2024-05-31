@@ -1,0 +1,195 @@
+extensions [matrix table]
+
+to-report createContractFromScratch [ contract_key contract_value ]
+  let elem table:make
+  table:put elem contract_key contract_value
+  report elem
+end
+
+to debugMatrix [ table contract_key n_bs]
+  let mm matrix:make-constant (n_bs) (n_bs) 0
+
+  foreach ( table:keys table ) [
+    [key] -> let tmpkey key
+    let row item 0 tmpkey
+    let col item 1 tmpkey
+
+    let tmptable table:get table tmpkey
+    let tmpquant 0 
+    if table:has-key? tmptable contract_key [
+      set tmpquant table:get tmptable contract_key]
+    matrix:set mm row col tmpquant
+  ]
+  print matrix:pretty-print-text mm
+end
+
+to putContractValue [ contract_table contract_parties contract_key contract_value ]
+
+  let contract table:get contract_table contract_parties
+  table:put contract contract_key contract_value
+
+end
+
+to sumContractValue [ contract_table contract_parties contract_key new_value ]
+    
+  let contract table:get contract_table contract_parties
+  if table:has-key? contract contract_key
+    [ let tmp_new_value table:get contract contract_key
+      set new_value (new_value + tmp_new_value) 
+    ]
+  table:put contract contract_key new_value 
+
+end
+
+to table_set [ contract_table row-id col-id contract_key contract_value debug ]   ;use this with prices 
+  let contract_parties list row-id col-id
+
+  if debug = TRUE [ print contract_parties ]
+
+  ifelse table:has-key? contract_table contract_parties
+      [ putContractValue contract_table contract_parties contract_key contract_value ] ;; pull contract
+      [ table:put contract_table contract_parties createContractFromScratch contract_key contract_value ];; create contracto from scratch
+
+end
+
+to table_create_and_sum [ contract_table row-id col-id contract_key contract_value debug ]  ;use this with quantities, sent, outstanding 
+
+  let contract_parties list row-id col-id
+
+  if debug = TRUE [ print contract_parties ]
+
+  ifelse table:has-key? contract_table contract_parties
+      [ sumContractValue contract_table contract_parties contract_key contract_value ] ;; sum contract values
+      [ table:put contract_table contract_parties createContractFromScratch contract_key contract_value ];; create new table entry
+  
+end
+
+to table_sum [ contract_table row-id col-id contract_key contract_value debug ]  ;use this with quantities, sent, outstanding 
+
+  let contract_parties list row-id col-id
+
+  if debug = TRUE [ print contract_parties ]
+
+  ifelse table:has-key? contract_table contract_parties
+      [ sumContractValue contract_table contract_parties contract_key contract_value ] ;; pull contract
+      [ error "There is no contract here" ];; give error notification
+  
+end
+  ;; check if table has a contract for row-id col-id
+     ;; if yes, pull the contract
+        ;; check if existing contract has contract_key
+           ;; if yes, replace/sum value
+           ;; if no, add contract_key to table
+     ;; if no, create the contract from scratch
+
+
+to-report check-entry [ contract_table row-id col-id contract_key contract_key_minuend contract_key_subtrand]
+  let contract_parties list row-id col-id
+  ifelse table:has-key? contract_table contract_parties   
+  [ let contract table:get contract_table contract_parties
+    ifelse table:has-key? contract contract_key 
+    [
+      let value table:get contract contract_key 
+      ifelse value > 0 
+      [ report true ]
+      [ report false ]
+    ]
+    [
+      update-outstanding-quantity contract_table row-id col-id contract_key contract_key_minuend contract_key_subtrand
+      let value table:get contract contract_key 
+      ifelse value > 0 
+      [ report true ]
+      [ report false ]
+    ]
+  ]
+  [ report false ]
+end 
+
+
+to update-outstanding-quantity [ contract_table row-id col-id contract_key contract_key_minuend contract_key_subtrand] ;; renamed from create-outstanding-quantity
+  let contract_parties list row-id col-id
+    ;this needs to be updated every time--don't want to subtract from contract quantity every time; want to subtract from remaining!
+  ifelse table:has-key? contract_table contract_parties
+      [ subtractContractValue contract_table contract_parties contract_key_minuend contract_key_subtrand contract_key ] ;; pull contract
+      [ error "There is no contract here" ];; give error notification
+  
+end 
+
+; this code is not currently used --> it's from when update and create outstanding quantity were different --> leaving for archive/debugging
+;to update-outstanding-quantity [ contract_table row-id col-id contract_key ] 
+;  let contract_parties list row-id col-id
+;  let contract_key_minuend POTATO_OUTSTANDING_QUANTITY  ;this needs to be updated every time--don't want to subtract from contract quantity every time; want to subtract from remaining!
+;  let contract_key_subtrand POTATO_SENT
+;  ifelse table:has-key? contract_table contract_parties
+;      [ subtractContractValue contract_table contract_parties contract_key_minuend contract_key_subtrand contract_key ] ;; pull contract
+;      [ error "There is no contract here" ];; give error notification
+;  
+;end 
+
+to subtractContractValue [ contract_table contract_parties contract_key_minuend contract_key_subtrand contract_key ]  ;double check this code to make sure it's subtracting properly 
+  let contract table:get contract_table contract_parties
+  ifelse table:has-key? contract contract_key_minuend [
+    let minuend table:get contract contract_key_minuend
+    ifelse table:has-key? contract contract_key_subtrand [
+      let subtrand table:get contract contract_key_subtrand
+      table:put contract contract_key minuend - subtrand
+    ]
+    [
+      table:put contract contract_key minuend
+    ]
+  ]
+  [
+    error "There is no contract here: no minuend"
+  ]
+
+  
+end 
+
+;ifelse outstanding-contract-quant <= product-avail-to-sell
+
+
+to-report check-bigger-than-entry [contract_table row-id col-id contract_key comparison_value ]  
+  let contract_parties list row-id col-id
+  let contract table:get contract_table contract_parties
+  let contract_value table:get contract contract_key 
+  ifelse contract_value <= comparison_value 
+  [
+    report true 
+  ]
+  [
+    report false
+  ] 
+end
+
+
+to-report report-value [contract_table row-id col-id contract_key ]  
+  let contract_parties list row-id col-id
+  let contract table:get contract_table contract_parties
+  let contract_value table:get contract contract_key  
+  
+  report contract_value 
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

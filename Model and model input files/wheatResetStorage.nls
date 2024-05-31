@@ -1,0 +1,158 @@
+
+;; this resets the storage of each agentset to 0 every year. wheat left in inventory is sold on open market.
+
+
+to reset-storage_wheat [ agentset ]
+  
+  ask agentset [
+
+    if (agentset = wheat_farmers ) [
+      
+      set assets ( assets + ( wheat-hrw-conventional_inventory-current * wheat-hrw-conventional_price-farmgate-avg ) )
+      set wheat-outside ( wheat-outside + wheat-hrw-conventional_inventory-current ) 
+      set wheat-hrw-conventional_inventory-current 0
+      
+      set assets ( assets + ( wheat-hrw-organic_inventory-current * wheat-hrw-organic_price-farmgate-avg ) )
+      set wheat-outside ( wheat-outside + wheat-hrw-organic_inventory-current ) 
+      set wheat-hrw-organic_inventory-current 0
+      
+      set assets ( assets + ( wheat-snowmass-conventional_inventory-current * wheat-snowmass-conventional_price-farmgate-avg ) )
+      set wheat-outside ( wheat-outside + wheat-snowmass-conventional_inventory-current ) 
+      set wheat-snowmass-conventional_inventory-current 0
+      
+    ]
+    
+    
+    if ( agentset = wheat_elevators ) [ 
+      
+      set assets ( assets + ( wheat-hrw-conventional_inventory-current * wheat-hrw-conventional_price-elevator-receives-avg ) )
+      set wheat-outside ( wheat-outside + wheat-hrw-conventional_inventory-current ) 
+      set wheat-hrw-conventional_inventory-current 0
+      
+      set assets ( assets + ( wheat-hrw-organic_inventory-current * wheat-hrw-organic_price-elevator-receives-avg ) )
+      set wheat-outside ( wheat-outside + wheat-hrw-organic_inventory-current ) 
+      set wheat-hrw-organic_inventory-current 0
+      
+      set assets ( assets + ( wheat-snowmass-conventional_inventory-current * wheat-snowmass-conventional_price-elevator-receives-avg ) )
+      set wheat-outside ( wheat-outside + wheat-snowmass-conventional_inventory-current ) 
+      set wheat-snowmass-conventional_inventory-current 0 
+    ]
+
+    if ( agentset = wheat_mills ) [
+      
+      set assets ( assets + ( wheat-hrw-conventional_inventory-current * wheat-hrw-conventional_price-elevator-receives-avg ) )
+      set wheat-outside ( wheat-outside + ( wheat-hrw-conventional_inventory-current * 1.25) ) 
+      set wheat-hrw-conventional_inventory-current 0
+      
+      set assets ( assets + ( wheat-hrw-conventional-flour_inventory-current * wheat-hrw-conventional-flour_price-mill-receives-avg ) )
+      set wheat-outside ( wheat-outside + ( wheat-hrw-conventional-flour_inventory-current * 1.25) ) 
+      set wheat-hrw-conventional-flour_inventory-current 0
+      
+      set assets ( assets + ( wheat-hrw-organic_inventory-current * wheat-hrw-organic_price-elevator-receives-avg ) )
+      set wheat-outside ( wheat-outside + ( wheat-hrw-organic_inventory-current * 1.25) ) 
+      set wheat-hrw-organic_inventory-current 0
+      
+      set assets ( assets + ( wheat-hrw-organic-flour_inventory-current * wheat-hrw-organic-flour_price-mill-receives-avg ) )
+      set wheat-outside ( wheat-outside + ( wheat-hrw-organic-flour_inventory-current * 1.25) ) 
+      set wheat-hrw-organic-flour_inventory-current 0
+      
+      set assets ( assets + ( wheat-snowmass-conventional_inventory-current * wheat-snowmass-conventional_price-elevator-receives-avg ) )
+      set wheat-outside ( wheat-outside + ( wheat-snowmass-conventional_inventory-current * 1.25) ) 
+      set wheat-snowmass-conventional_inventory-current 0
+      
+      set assets ( assets + ( wheat-snowmass-conventional-flour_inventory-current * wheat-snowmass-conventional-flour_price-mill-receives-avg ) )
+      set wheat-outside ( wheat-outside + ( wheat-snowmass-conventional-flour_inventory-current * 1.25) ) 
+      set wheat-snowmass-conventional-flour_inventory-current 0 
+    ]
+    
+    if ( agentset = wheat_bakers ) [
+      
+      set assets ( assets + ( wheat-hrw-conventional-bread_inventory-current * wheat-hrw-conventional-bread_price-baker-receives-avg ) )
+      set wheat-outside ( wheat-outside + ( wheat-hrw-conventional-bread_inventory-current * 1.25) ) 
+      set wheat-hrw-conventional-bread_inventory-current 0
+      
+      set assets ( assets + ( wheat-hrw-conventional-flour_inventory-current * wheat-hrw-conventional-flour_price-mill-receives-avg ) )
+      set wheat-outside ( wheat-outside + ( wheat-hrw-conventional-flour_inventory-current * 1.25) ) 
+      set wheat-hrw-conventional-flour_inventory-current 0
+      
+      set assets ( assets + ( wheat-hrw-organic-bread_inventory-current * wheat-hrw-organic-bread_price-baker-receives-avg ) )
+      set wheat-outside ( wheat-outside + ( wheat-hrw-organic-bread_inventory-current * 1.25) ) 
+      set wheat-hrw-organic-bread_inventory-current 0
+      
+      set assets ( assets + ( wheat-hrw-organic-flour_inventory-current * wheat-hrw-organic-flour_price-mill-receives-avg ) )
+      set wheat-outside ( wheat-outside + ( wheat-hrw-organic-flour_inventory-current * 1.25) ) 
+      set wheat-hrw-organic-flour_inventory-current 0
+      
+      set assets ( assets + ( wheat-snowmass-conventional-bread_inventory-current * wheat-snowmass-conventional-bread_price-baker-receives-avg ) )
+      set wheat-outside ( wheat-outside + ( wheat-snowmass-conventional-bread_inventory-current * 1.25) ) 
+      set wheat-snowmass-conventional-bread_inventory-current 0
+      
+      set assets ( assets + ( wheat-snowmass-conventional-flour_inventory-current * wheat-snowmass-conventional-flour_price-mill-receives-avg ) )
+      set wheat-outside ( wheat-outside + ( wheat-snowmass-conventional-flour_inventory-current * 1.25) ) 
+      set wheat-snowmass-conventional-flour_inventory-current 0 
+    ]
+    
+    if ( agentset = distributors ) [       
+    
+      set assets ( assets + ( wheat-hrw-conventional-bread_inventory-current * wheat-hrw-conventional-bread_price-distributor-receives-avg ) )
+      set wheat-outside ( wheat-outside + ( wheat-hrw-conventional-bread_inventory-current * 1.25) ) 
+      set wheat-hrw-conventional-bread_inventory-current 0
+      
+      set assets ( assets + ( wheat-hrw-conventional-flour_inventory-current * wheat-hrw-conventional-flour_price-distributor-receives-avg ) )
+      set wheat-outside ( wheat-outside + ( wheat-hrw-conventional-flour_inventory-current * 1.25) ) 
+      set wheat-hrw-conventional-flour_inventory-current 0
+      
+      set assets ( assets + ( wheat-hrw-organic-bread_inventory-current * wheat-hrw-organic-bread_price-distributor-receives-avg ) )
+      set wheat-outside ( wheat-outside + ( wheat-hrw-organic-bread_inventory-current * 1.25) ) 
+      set wheat-hrw-organic-bread_inventory-current 0
+      
+      set assets ( assets + ( wheat-hrw-organic-flour_inventory-current * wheat-hrw-organic-flour_price-distributor-receives-avg ) )
+      set wheat-outside ( wheat-outside + ( wheat-hrw-organic-flour_inventory-current * 1.25) ) 
+      set wheat-hrw-organic-flour_inventory-current 0
+      
+      set assets ( assets + ( wheat-snowmass-conventional-bread_inventory-current * wheat-snowmass-conventional-bread_price-distributor-receives-avg ) )
+      set wheat-outside ( wheat-outside + ( wheat-snowmass-conventional-bread_inventory-current * 1.25) ) 
+      set wheat-snowmass-conventional-bread_inventory-current 0
+      
+      set assets ( assets + ( wheat-snowmass-conventional-flour_inventory-current * wheat-snowmass-conventional-flour_price-distributor-receives-avg ) )
+      set wheat-outside ( wheat-outside + ( wheat-snowmass-conventional-flour_inventory-current * 1.25) ) 
+      set wheat-snowmass-conventional-flour_inventory-current 0 
+    ]    
+    
+    if ( agentset = dps_buyers ) [ 
+      
+      set bread-dps ( bread-dps + wheat-hrw-conventional-bread_inventory-current ) 
+      set wheat-hrw-conventional-bread_dps-purchased-annual wheat-hrw-conventional-bread_inventory-current
+      set wheat-hrw-conventional-bread_dps-purchased-total-model-run ( wheat-hrw-conventional-bread_dps-purchased-total-model-run + wheat-hrw-conventional-bread_inventory-current ) 
+      set wheat-hrw-conventional-bread_inventory-current 0
+      
+      set flour-dps ( flour-dps + wheat-hrw-conventional-flour_inventory-current ) 
+      set wheat-hrw-conventional-flour_dps-purchased-annual wheat-hrw-conventional-flour_inventory-current
+      set wheat-hrw-conventional-flour_dps-purchased-total-model-run ( wheat-hrw-conventional-flour_dps-purchased-total-model-run + wheat-hrw-conventional-flour_inventory-current ) 
+      set wheat-hrw-conventional-flour_inventory-current 0
+      
+      set bread-dps ( bread-dps + wheat-hrw-organic-bread_inventory-current ) 
+      set wheat-hrw-organic-bread_dps-purchased-annual wheat-hrw-organic-bread_inventory-current
+      set wheat-hrw-organic-bread_dps-purchased-total-model-run ( wheat-hrw-organic-bread_dps-purchased-total-model-run + wheat-hrw-organic-bread_inventory-current )
+      set wheat-hrw-organic-bread_inventory-current 0
+      
+      set flour-dps ( flour-dps + wheat-hrw-organic-flour_inventory-current )
+      set wheat-hrw-organic-flour_dps-purchased-annual wheat-hrw-organic-flour_inventory-current
+      set wheat-hrw-organic-flour_dps-purchased-total-model-run ( wheat-hrw-organic-flour_dps-purchased-total-model-run + wheat-hrw-organic-flour_inventory-current )
+      set wheat-hrw-organic-flour_inventory-current 0
+      
+      set bread-dps ( bread-dps + wheat-snowmass-conventional-bread_inventory-current ) 
+      set wheat-snowmass-conventional-bread_dps-purchased-annual wheat-snowmass-conventional-bread_inventory-current
+      set wheat-snowmass-conventional-bread_dps-purchased-total-model-run ( wheat-snowmass-conventional-bread_dps-purchased-total-model-run + wheat-snowmass-conventional-bread_inventory-current ) 
+      set wheat-snowmass-conventional-bread_inventory-current 0
+      
+      set flour-dps ( flour-dps + wheat-snowmass-conventional-flour_inventory-current )     
+      set wheat-snowmass-conventional-flour_dps-purchased-annual wheat-snowmass-conventional-flour_inventory-current
+      set wheat-snowmass-conventional-flour_dps-purchased-total-model-run ( wheat-snowmass-conventional-flour_dps-purchased-total-model-run + wheat-snowmass-conventional-flour_inventory-current )    
+      set wheat-snowmass-conventional-flour_inventory-current 0 
+         
+    ]
+    
+  ]
+  
+end

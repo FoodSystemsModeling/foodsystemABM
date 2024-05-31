@@ -1,0 +1,221 @@
+
+;; ***********************************************************************************************************************
+;; this resets the storage of each agentset to 0 every year. potatoes left in inventory at this point are purchased by "the market" for the average
+;; price that is appropriate at each stage of the supply chain
+;; ***********************************************************************************************************************
+
+
+to reset-storage_potatoes [ agentset ]
+  
+  ask agentset [
+    
+    if ( agentset = potato_farmers ) [ 
+      set assets ( assets + ( potatoes-russet-conventional-fresh_inventory-current * potato-conventional-russet_price-farmgate-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-russet-conventional-fresh_inventory-current ) 
+      set potatoes-russet-conventional-fresh_inventory-current 0
+      
+      set assets ( assets + ( potatoes-russet-organic-fresh_inventory-current * potato-organic-russet_price-farmgate-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-russet-organic-fresh_inventory-current ) 
+      set potatoes-russet-organic-fresh_inventory-current 0
+      
+      set assets ( assets + ( potatoes-purple-conventional-fresh_inventory-current * potato-conventional-purple_price-farmgate-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-purple-conventional-fresh_inventory-current ) 
+      set potatoes-purple-conventional-fresh_inventory-current 0
+      
+      set assets ( assets + ( potatoes-purple-organic-fresh_inventory-current * potato-organic-purple_price-farmgate-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-purple-organic-fresh_inventory-current ) 
+      set potatoes-purple-organic-fresh_inventory-current 0 
+    
+      set assets ( assets + ( potatoes-russet-conventional-fresh-small_inventory-current * potato-conventional-russet-small_price-farmgate-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-russet-conventional-fresh-small_inventory-current ) 
+      set potatoes-russet-conventional-fresh-small_inventory-current 0
+      
+      set potatoes-russet-conventional_passthrough-annual 0
+      set potatoes-russet-organic_passthrough-annual 0
+      set potatoes-purple-conventional_passthrough-annual 0
+      set potatoes-purple-organic_passthrough-annual 0
+      set potatoes-russet-conventional-small_passthrough-annual 0
+    ]
+    
+    if ( agentset = potato_shippers ) [ 
+      set assets ( assets + ( potatoes-russet-conventional-fresh_inventory-current * potato-conventional-russet_price-shipper-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-russet-conventional-fresh_inventory-current ) 
+      set potatoes-russet-conventional-fresh_inventory-current 0
+      
+      set assets ( assets + ( potatoes-russet-organic-fresh_inventory-current * potato-organic-russet_price-shipper-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-russet-organic-fresh_inventory-current ) 
+      set potatoes-russet-organic-fresh_inventory-current 0
+      
+      set assets ( assets + ( potatoes-purple-conventional-fresh_inventory-current * potato-conventional-purple_price-shipper-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-purple-conventional-fresh_inventory-current ) 
+      set potatoes-purple-conventional-fresh_inventory-current 0
+      
+      set assets ( assets + ( potatoes-purple-organic-fresh_inventory-current * potato-organic-purple_price-shipper-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-purple-organic-fresh_inventory-current ) 
+      set potatoes-purple-organic-fresh_inventory-current 0 
+    
+      set assets ( assets + ( potatoes-russet-conventional-fresh-small_inventory-current * potato-conventional-russet-small_price-shipper-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-russet-conventional-fresh-small_inventory-current ) 
+      set potatoes-russet-conventional-fresh-small_inventory-current 0
+    ]
+    
+    
+    if ( agentset = potato_repackers ) [ 
+      set assets ( assets + ( potatoes-russet-conventional-fresh_inventory-current * potato-conventional-russet_price-repacker-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-russet-conventional-fresh_inventory-current ) 
+      set potatoes-russet-conventional-fresh_inventory-current 0
+      
+      set assets ( assets + ( potatoes-russet-organic-fresh_inventory-current * potato-organic-russet_price-repacker-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-russet-organic-fresh_inventory-current ) 
+      set potatoes-russet-organic-fresh_inventory-current 0
+      
+      set assets ( assets + ( potatoes-purple-conventional-fresh_inventory-current * potato-conventional-purple_price-repacker-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-purple-conventional-fresh_inventory-current ) 
+      set potatoes-purple-conventional-fresh_inventory-current 0
+      
+      set assets ( assets + ( potatoes-purple-organic-fresh_inventory-current * potato-organic-purple_price-repacker-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-purple-organic-fresh_inventory-current ) 
+      set potatoes-purple-organic-fresh_inventory-current 0 
+      
+      set assets ( assets + ( potatoes-russet-conventional-fresh-small_inventory-current * potato-conventional-russet-small_price-repacker-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-russet-conventional-fresh-small_inventory-current ) 
+      set potatoes-russet-conventional-fresh-small_inventory-current 0
+    ]
+
+    
+    if ( agentset = distributors ) [ 
+      
+      set assets ( assets + ( potatoes-russet-conventional-fresh_inventory-current * potato-conventional-russet_price-distributor-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-russet-conventional-fresh_inventory-current ) 
+      set potatoes-russet-conventional-fresh_inventory-current 0       
+      
+      set assets ( assets + ( potatoes-russet-conventional-processed_inventory-current * potato-conventional-russet-processed_price-distributor-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + ( potatoes-russet-conventional-processed_inventory-current * 1.25) ) 
+      set potatoes-russet-conventional-processed_inventory-current 0
+      
+      set assets ( assets + ( potatoes-russet-organic-fresh_inventory-current * potato-organic-russet_price-distributor-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-russet-organic-fresh_inventory-current ) 
+      set potatoes-russet-organic-fresh_inventory-current 0
+      
+      set assets ( assets + ( potatoes-purple-conventional-fresh_inventory-current * potato-conventional-purple_price-distributor-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-purple-conventional-fresh_inventory-current ) 
+      set potatoes-purple-conventional-fresh_inventory-current 0       
+      
+      if potato-scenario = "specialty-product" [
+      set assets ( assets + ( potatoes-purple-conventional-processed_inventory-current * potato-conventional-purple-processed_price-distributor-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + ( potatoes-purple-conventional-processed_inventory-current * 1.25) ) 
+      set potatoes-purple-conventional-processed_inventory-current 0
+      ]
+      
+      set assets ( assets + ( potatoes-purple-organic-fresh_inventory-current * potato-organic-purple_price-distributor-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-purple-organic-fresh_inventory-current ) 
+      set potatoes-purple-organic-fresh_inventory-current 0  
+      
+      if potato-scenario = "specialty-product"[
+      set assets ( assets + ( potatoes-purple-organic-processed_inventory-current * potato-organic-purple-processed_price-distributor-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + ( potatoes-purple-organic-processed_inventory-current * 1.25) ) 
+      set potatoes-purple-organic-processed_inventory-current 0 
+      ]
+      
+      set assets ( assets + ( potatoes-russet-conventional-fresh-small_inventory-current * potato-conventional-russet-small_price-distributor-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-russet-conventional-fresh-small_inventory-current ) 
+      set potatoes-russet-conventional-fresh-small_inventory-current 0 
+    ]
+    
+    
+    if ( agentset = dps_buyers ) [ 
+      
+      set potatoes-dps ( potatoes-dps + out-of-state-french-fry_inventory-current ) 
+      set potato-french-fry_dps-purchased-annual out-of-state-french-fry_inventory-current
+      set potato-french-fry_dps-purchased-total-model-run ( potato-french-fry_dps-purchased-total-model-run + out-of-state-french-fry_inventory-current ) 
+      set out-of-state-french-fry_inventory-current 0    
+      
+      set potatoes-dps ( potatoes-dps + potatoes-russet-conventional-fresh_inventory-current ) 
+      set potato-russet-conventional_dps-purchased-annual potatoes-russet-conventional-fresh_inventory-current
+      set potato-russet-conventional_dps-purchased-total-model-run ( potato-russet-conventional_dps-purchased-total-model-run + potatoes-russet-conventional-fresh_inventory-current ) 
+      set potatoes-russet-conventional-fresh_inventory-current 0  
+      
+      set potatoes-dps ( potatoes-dps + potatoes-russet-organic-fresh_inventory-current ) 
+      set potato-russet-organic_dps-purchased-annual potatoes-russet-organic-fresh_inventory-current
+      set potato-russet-organic_dps-purchased-total-model-run ( potato-russet-organic_dps-purchased-total-model-run + potatoes-russet-organic-fresh_inventory-current )
+      set potatoes-russet-organic-fresh_inventory-current 0 
+      
+      set potatoes-dps ( potatoes-dps + potatoes-purple-conventional-fresh_inventory-current ) 
+      set potato-purple-conventional_dps-purchased-annual potatoes-purple-conventional-fresh_inventory-current
+      set potato-purple-conventional_dps-purchased-total-model-run ( potato-purple-conventional_dps-purchased-total-model-run + potatoes-purple-conventional-fresh_inventory-current )
+      set potatoes-purple-conventional-fresh_inventory-current 0
+      
+      set potatoes-dps ( potatoes-dps + potatoes-purple-organic-fresh_inventory-current ) 
+      set potato-purple-organic_dps-purchased-annual potatoes-purple-organic-fresh_inventory-current
+      set potato-purple-organic_dps-purchased-total-model-run ( potato-purple-organic_dps-purchased-total-model-run + potatoes-purple-organic-fresh_inventory-current )
+      set potatoes-purple-organic-fresh_inventory-current 0
+      
+      set potatoes-dps ( potatoes-dps + potatoes-russet-conventional-fresh-small_inventory-current ) 
+      set potato-russet-conventional_dps-purchased-annual potatoes-russet-conventional-fresh-small_inventory-current
+      set potato-russet-conventional_dps-purchased-total-model-run ( potato-russet-conventional_dps-purchased-total-model-run + potatoes-russet-conventional-fresh-small_inventory-current ) 
+      set potatoes-russet-conventional-fresh-small_inventory-current 0
+      
+      ; all processed potatoes feed into a single specialty product trackers; could be changed later if more granularity required for product tracking
+      set potatoes-dps ( potatoes-dps + potatoes-russet-conventional-processed_inventory-current ) 
+      set potato-specialty-product_dps-purchased-annual potatoes-russet-conventional-processed_inventory-current
+      set potato-specialty-product_dps-purchased-total-model-run ( potato-specialty-product_dps-purchased-total-model-run + potatoes-russet-conventional-processed_inventory-current )
+      set potatoes-russet-conventional-processed_inventory-current 0
+      
+      set potatoes-dps ( potatoes-dps + potatoes-russet-organic-processed_inventory-current ) 
+      set potato-specialty-product_dps-purchased-annual potatoes-russet-organic-processed_inventory-current
+      set potato-specialty-product_dps-purchased-total-model-run ( potato-specialty-product_dps-purchased-total-model-run + potatoes-russet-organic-processed_inventory-current ) 
+      set potatoes-russet-organic-processed_inventory-current 0
+      
+      set potatoes-dps ( potatoes-dps + potatoes-purple-conventional-processed_inventory-current ) 
+      set potato-specialty-product_dps-purchased-annual potatoes-purple-conventional-processed_inventory-current
+      set potato-specialty-product_dps-purchased-total-model-run ( potato-specialty-product_dps-purchased-total-model-run + potatoes-purple-conventional-processed_inventory-current ) 
+      set potatoes-purple-conventional-processed_inventory-current 0
+      
+      set potatoes-dps ( potatoes-dps + potatoes-purple-organic-processed_inventory-current ) 
+      set potato-specialty-product_dps-purchased-annual potatoes-purple-organic-processed_inventory-current
+      set potato-specialty-product_dps-purchased-total-model-run ( potato-specialty-product_dps-purchased-total-model-run + potatoes-purple-organic-processed_inventory-current ) 
+      set potatoes-purple-organic-processed_inventory-current 0
+    ]
+     
+    
+    if ( agentset = potato_processors ) [
+      
+      ;sell fresh product at the breakeven price if do not process everything
+      set assets ( assets + ( potatoes-russet-conventional-fresh_inventory-current * potato-conventional-russet_price-shipper-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-russet-conventional-fresh_inventory-current ) 
+      set potatoes-russet-conventional-fresh_inventory-current 0
+      
+      set assets ( assets + ( potatoes-russet-organic-fresh_inventory-current * potato-organic-russet_price-shipper-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-russet-organic-fresh_inventory-current ) 
+      set potatoes-russet-organic-fresh_inventory-current 0
+      
+      set assets ( assets + ( potatoes-purple-conventional-fresh_inventory-current * potato-conventional-purple_price-shipper-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-purple-conventional-fresh_inventory-current ) 
+      set potatoes-purple-conventional-fresh_inventory-current 0
+      
+      set assets ( assets + ( potatoes-purple-organic-fresh_inventory-current * potato-organic-purple_price-shipper-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-purple-organic-fresh_inventory-current ) 
+      set potatoes-purple-organic-fresh_inventory-current 0 
+    
+      set assets ( assets + ( potatoes-russet-conventional-fresh-small_inventory-current * potato-conventional-russet-small_price-shipper-receives-avg ) )
+      set potatoes-outside ( potatoes-outside + potatoes-russet-conventional-fresh-small_inventory-current ) 
+      set potatoes-russet-conventional-fresh-small_inventory-current 0
+      
+      ;sell processed inventory on the market 
+     
+      set assets (assets + (potatoes-russet-conventional-processed_inventory-current * potato-conventional-russet-processed_price-processor-receives-avg))
+      set potatoes-outside (potatoes-outside + potatoes-russet-conventional-processed_inventory-current)
+      set potatoes-russet-conventional-processed_inventory-current 0
+     
+      set assets (assets + (potatoes-purple-conventional-processed_inventory-current * potato-conventional-purple-processed_price-processor-receives-avg))
+      set potatoes-outside (potatoes-outside + potatoes-purple-conventional-processed_inventory-current)
+      set potatoes-purple-conventional-processed_inventory-current 0
+      
+      set assets (assets + (potatoes-purple-organic-processed_inventory-current * potato-organic-purple-processed_price-processor-receives-avg))
+      set potatoes-outside (potatoes-outside + potatoes-purple-organic-processed_inventory-current)
+      set potatoes-purple-organic-processed_inventory-current 0 ]
+     
+    set assets-final assets
+  ]
+  
+end

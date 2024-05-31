@@ -1,0 +1,1336 @@
+
+;; -------------------------------------------------------------------------------------------
+;; if week = 31, set prime season contract, offering 50% of estimated annual yield
+;; if week = 5, set off season contract #1, offering 50% of remaining inventory (25% of total yield)
+;; if week = 18, set prime season contract #2, offering last 50% of actual inventory (25% of total yield)
+;; prime season contracts are based on estimated yield, because contracting occurs before harvest
+;; off-season contracts are based on actual yield, because harvest is complete by contracting time
+;; --------------------------------------------------------------------------------------------
+
+to priceAdjustments_hrwConventionalWheat [ buyers  buyer_count ]
+ 
+  ask buyers [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) )
+    let other-buyers other buyers 
+    let comparison-group n-of subgroup-number other-buyers
+    if wheat-hrw-conventional_price-to-buy < min [ wheat-hrw-conventional_price-to-buy ] of comparison-group   
+      [ set wheat-hrw-conventional_price-to-buy ( wheat-hrw-conventional_price-to-buy * 1.1 ) ]
+    if wheat-hrw-conventional_price-to-buy > max [ wheat-hrw-conventional_price-to-buy ] of comparison-group  
+      [ set wheat-hrw-conventional_price-to-buy ( wheat-hrw-conventional_price-to-buy * .9 ) ] 
+    ]
+  
+end
+
+
+to setContracts_hrwConventionalWheat [ sellers  buyers  buyer_count  loyalty ]
+  
+  if ( year != 1 and buyer_count > 1 ) [ priceAdjustments_hrwConventionalWheat  buyers buyer_count ]
+  ask buyers [ set wheat-hrw-conventional_contract-space-available ( wheat-hrw-conventional_inventory-maximum - wheat-hrw-conventional_inventory-current ) ]
+  
+  ask sellers [
+            
+    let wheat-hrw-conventional-quantity-estimate 0
+    let contracted-this-time 0
+    
+    if sellers != wheat_farmers [
+      if wheat-hrw-conventional_my-incoming-total < 0 [ set wheat-hrw-conventional_my-incoming-total 0 ] 
+    ]
+    
+    if sellers = wheat_farmers [
+      if week = 31 [ set wheat-hrw-conventional-quantity-estimate ( wheat-farmers_yield-estimated_hrw-conventional * .5 ) ]
+      if week = 5 [ set wheat-hrw-conventional-quantity-estimate ( wheat-hrw-conventional_inventory-current * .5 ) ]
+      if week = 18 [ set wheat-hrw-conventional-quantity-estimate wheat-hrw-conventional_inventory-current ]
+    ]
+    
+    if sellers = wheat_elevators [ set wheat-hrw-conventional-quantity-estimate wheat-hrw-conventional_my-incoming-total ]
+    
+    while [ ( wheat-hrw-conventional-promised < wheat-hrw-conventional-quantity-estimate ) and ( any? buyers with [ wheat-hrw-conventional_contract-space-available > 0 ] ) ] [
+
+      let buyers-with-capacity ( buyers with [ wheat-hrw-conventional_contract-space-available > 0 ] )      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity ]  
+        [ set bidding_buyers buyers-with-capacity ]
+
+        let my-buyer n-of 1 ( bidding_buyers with-max [ wheat-hrw-conventional_price-to-buy ] )
+        set wheat-hrw-conventional_price-to-sell item 0 [ wheat-hrw-conventional_price-to-buy ] of my-buyer
+        if ( week = 5 ) or ( week = 18 ) [ 
+          set wheat-hrw-conventional_price-to-sell ( wheat-hrw-conventional_price-to-sell * 1.1 )                   ; prices are 10% higher during the off-season
+        ] 
+        
+        let col-id id
+        let row-id 0
+        ask my-buyer [ set row-id id ]
+        let rounded-price precision ( wheat-hrw-conventional_price-to-sell ) 2
+        table_set wheat-table_hrw-conventional row-id col-id WHEAT_PRICE rounded-price debug-mode    
+        
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+        let contract-space-available item 0 ( [ wheat-hrw-conventional_contract-space-available ] of my-buyer )
+        let seller_wheat-available ( wheat-hrw-conventional-quantity-estimate - wheat-hrw-conventional-promised )
+        
+        ifelse contract-space-available >= seller_wheat-available
+          [ set contracted-this-time seller_wheat-available ]
+          [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]  
+        
+        table_create_and_sum wheat-table_hrw-conventional row-id col-id WHEAT_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to wheat quantity table        
+        table_create_and_sum wheat-table_hrw-conventional row-id col-id WHEAT_OUTSTANDING_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to wheat quantity table                
+        set wheat-hrw-conventional-promised ( wheat-hrw-conventional-promised + contracted-this-time )
+        
+        ask my-buyer [
+          set wheat-hrw-conventional_contract-space-available ( wheat-hrw-conventional_contract-space-available - contracted-this-time )
+          set wheat-hrw-conventional_my-incoming-total ( wheat-hrw-conventional_my-incoming-total + contracted-this-time) 
+        ]
+      ]
+    ]  
+  ]
+  
+end 
+
+
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+
+
+to priceAdjustments_hrwConventionalFlour [ buyers buyer_count ]
+  
+  ask buyers [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) )
+    let other-buyers other buyers 
+    let comparison-group n-of subgroup-number other-buyers
+    if wheat-hrw-conventional-flour_price-to-buy < min [ wheat-hrw-conventional-flour_price-to-buy ] of comparison-group   
+      [ set wheat-hrw-conventional-flour_price-to-buy ( wheat-hrw-conventional-flour_price-to-buy * 1.1 ) ]
+    if wheat-hrw-conventional-flour_price-to-buy > max [ wheat-hrw-conventional-flour_price-to-buy ] of comparison-group  
+      [ set wheat-hrw-conventional-flour_price-to-buy ( wheat-hrw-conventional-flour_price-to-buy * .9 ) ] 
+  ]
+
+end
+
+
+to setContracts_hrwConventionalFlour [ sellers  buyers  buyer_count  loyalty ]  
+  
+  if debug-mode = TRUE [ 
+    print " "
+    print "------------------------------------------------------"
+    type "CONTRACTING STEP: " type sellers type " sell to " print buyers
+    print "------------------------------------------------------" ]
+  
+  if ( year != 1 and buyer_count > 1 ) [ priceAdjustments_hrwConventionalFlour  buyers buyer_count ]
+  ask buyers [ set wheat-hrw-conventional-flour_contract-space-available ( wheat-hrw-conventional-flour_inventory-maximum - wheat-hrw-conventional-flour_inventory-current ) ]
+  
+  ask sellers [
+    
+    if debug-mode = TRUE [ 
+        print " "  
+        print "-------------------------------------------------------"
+        print "beginning negotation"
+        print "-------------------------------------------------------"
+        print " " ]
+    
+    let wheat-hrw-conventional-flour-quantity-estimate 0
+    let contracted-this-time 0
+    
+    ;; wheat mills assess their incoming wheat amount, then account for the wheat>flour conversion factor before deciding how much flour they'll have to offer. they then negotiate contracts with bakers first, and then distributors.
+    ;; thus, this code contracts away half the flour to bakers (transaction percent = .5) during their step, leaving what remains (transaction percent = 1) for distributors during their step.
+    ;; this also means that, hypothetically, if bakers don't have enough inventory space to buy half the flour produced in the system, distributors can purchase that overage in addition to their 50%.
+    ifelse sellers = wheat_mills 
+    [ let transaction-percent 0
+      if buyers = wheat_bakers [ set transaction-percent .5 ]
+      if buyers = distributors [ set transaction-percent 1 ] 
+      set wheat-hrw-conventional-flour-quantity-estimate ( ( wheat-hrw-conventional_my-incoming-total * .75 ) * transaction-percent )
+    ]
+    [ set wheat-hrw-conventional-flour-quantity-estimate wheat-hrw-conventional-flour_my-incoming-total ]
+
+    if debug-mode = TRUE [ 
+      print " "
+      type agent-name type " estimated quantity available to contract this step (wheat-hrw-conventional-flour-quantity-estimate): " print wheat-hrw-conventional-flour-quantity-estimate 
+    ]
+    
+    while [ ( wheat-hrw-conventional-flour-promised < wheat-hrw-conventional-flour-quantity-estimate ) and ( any? buyers with [ wheat-hrw-conventional-flour_contract-space-available > 0 ] ) ] [
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "beginning while loop"
+        print "-------------------------------------------------------"
+        print " " ]
+      
+      if debug-mode = true [
+        print " "
+        print "we are thinking about buyers!"
+        type "seller name: " type agent-name type " | seller id: " print id
+        type "wheat-hrw-conventional-flour-promised: " type wheat-hrw-conventional-flour-promised type " | wheat-hrw-conventional-flour-quantity-estimate: " print wheat-hrw-conventional-flour-quantity-estimate 
+      ]
+
+      let buyers-with-capacity ( buyers with [ wheat-hrw-conventional-flour_contract-space-available > 0 ] )
+      if debug-mode = true [
+        print " "
+        type "buyers with capacity: " print buyers-with-capacity ]
+      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            type "if half - id of bidding buyers: " print [id] of bidding_buyers ] 
+        ]  
+        [ set bidding_buyers buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            type "else half - id of bidding buyers: " type [id] of bidding_buyers
+          ]
+        ]
+
+        let my-buyer n-of 1 ( bidding_buyers with-max [ wheat-hrw-conventional-flour_price-to-buy ] )
+        set wheat-hrw-conventional-flour_price-to-sell item 0 [ wheat-hrw-conventional-flour_price-to-buy ] of my-buyer
+        if ( week = 5 ) or ( week = 18 ) [ set wheat-hrw-conventional-flour_price-to-sell ( wheat-hrw-conventional-flour_price-to-sell * 1.1 ) ] ; prices are 10% higher during the off-season
+        if debug-mode = true [
+          print " "
+          type "price to buy: " print [ wheat-hrw-conventional-flour_price-to-buy ] of my-buyer
+        ]
+        
+        let col-id id
+        let row-id 0
+        if debug-mode = true [ 
+          print " "
+          type "my buyer's name: " type [ agent-name ] of my-buyer type " | my buyer's id: " type [ id ] of my-buyer type " | my buyer's space available: " print [ wheat-hrw-conventional-flour_contract-space-available ] of my-buyer ]
+        ask my-buyer [
+          set row-id id ]
+ 
+      let rounded-price ( precision ( wheat-hrw-conventional-flour_price-to-sell ) 2 )
+      table_set wheat-table_hrw-conventional-flour row-id col-id WHEAT_PRICE rounded-price debug-mode
+         
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "end of price negotatiations - moving on to quantity negotiation"
+        print "-------------------------------------------------------"
+        print " " ]
+              
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+      let contract-space-available item 0 ( [ wheat-hrw-conventional-flour_contract-space-available ] of my-buyer )
+      let seller_wheat-available ( wheat-hrw-conventional-flour-quantity-estimate - wheat-hrw-conventional-flour-promised )
+        
+      if debug-mode = TRUE [
+        print ""
+        type "my buyer's contract space available: " type contract-space-available type " | my wheat to sell: " print seller_wheat-available
+      ]
+      
+      ifelse contract-space-available >= seller_wheat-available
+        [ set contracted-this-time seller_wheat-available ]
+        [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]  
+        
+      if debug-mode = TRUE [
+        print " "
+        type "amount promised: " type wheat-hrw-conventional-flour-promised 
+      ]  
+        
+      table_create_and_sum wheat-table_hrw-conventional-flour row-id col-id WHEAT_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to wheat quantity table
+        
+      table_create_and_sum wheat-table_hrw-conventional-flour row-id col-id WHEAT_OUTSTANDING_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to wheat quantity table
+        
+      if debug-mode = TRUE [
+        type " | amount contracted this time: " type contracted-this-time 
+      ]
+        
+      set wheat-hrw-conventional-flour-promised ( wheat-hrw-conventional-flour-promised + contracted-this-time )   
+      
+      if debug-mode = TRUE [
+        type " | updated amount promised: " print wheat-hrw-conventional-flour-promised
+      ]
+               
+      ask my-buyer [
+        set wheat-hrw-conventional-flour_contract-space-available ( wheat-hrw-conventional-flour_contract-space-available - contracted-this-time )
+        set wheat-hrw-conventional-flour_my-incoming-total ( wheat-hrw-conventional-flour_my-incoming-total + contracted-this-time)
+        if debug-mode = true [
+          print " "
+          type "my buyer's updated space available: " print wheat-hrw-conventional-flour_contract-space-available ] 
+      ]
+    ]
+      
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "end of while loop"
+      print "-------------------------------------------------------"
+      print " " ]
+      
+      ]   
+    
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "END OF NEGOTIATIONS FOR THIS AGENT"
+      print "-------------------------------------------------------"
+      print " " ]
+ 
+  ]
+  
+  
+;     ------ (negotiations end here. final print statements below)
+  
+  
+;  if debug-mode = TRUE [
+;    print " "
+;    print "CONTRACT NEGOTIATION RESULTS:"
+;    print " "
+;    print "printing price debug table:"
+;    debugMatrix wheat-table_hrw-conventional-flour WHEAT_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+;    print " "
+;    print "printing quantity debug table:"
+;    debugMatrix wheat-table_hrw-conventional-flour WHEAT_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+;    print " "
+;  ask buyers [ 
+;      let tmp word id ": " 
+;      print word tmp wheat-hrw-conventional-flour_contract-space-available ] ]
+  
+end 
+
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+
+to priceAdjustments_hrwConventionalBread [ buyers buyer_count ]
+  
+  ask buyers [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) )
+    let other-buyers other buyers 
+    let comparison-group n-of subgroup-number other-buyers
+    if wheat-hrw-conventional-bread_price-to-buy < min [ wheat-hrw-conventional-bread_price-to-buy ] of comparison-group   
+      [ set wheat-hrw-conventional-bread_price-to-buy ( wheat-hrw-conventional-bread_price-to-buy * 1.1 ) ]
+    if wheat-hrw-conventional-bread_price-to-buy > max [ wheat-hrw-conventional-bread_price-to-buy ] of comparison-group  
+      [ set wheat-hrw-conventional-bread_price-to-buy ( wheat-hrw-conventional-bread_price-to-buy * .9 ) ] 
+  ]
+  
+end
+
+
+to setContracts_hrwConventionalBread [ sellers  buyers  buyer_count  loyalty ]
+  
+  if debug-mode = TRUE [ 
+    print " "
+    print "------------------------------------------------------"
+    type "CONTRACTING STEP: " type sellers type " sell to " print buyers
+    print "------------------------------------------------------" ]
+  
+  if ( year != 1 and buyer_count > 1 ) [ priceAdjustments_hrwConventionalBread  buyers buyer_count ]
+  ask buyers [ set wheat-hrw-conventional-bread_contract-space-available ( wheat-hrw-conventional-bread_inventory-maximum - wheat-hrw-conventional-bread_inventory-current ) ]
+  
+  ask sellers [
+    
+    if debug-mode = TRUE [ 
+        print " "  
+        print "--- beginning negotation"
+        print " " ]
+    
+    let wheat-hrw-conventional-bread-quantity-estimate 0
+    let contracted-this-time 0
+    
+    if wheat-hrw-conventional-bread_my-incoming-total < 0 [ set wheat-hrw-conventional-bread_my-incoming-total 0 ]
+    
+    ifelse sellers = wheat_bakers
+    [ set wheat-hrw-conventional-bread-quantity-estimate wheat-hrw-conventional-flour_my-incoming-total ]
+    [ set wheat-hrw-conventional-bread-quantity-estimate wheat-hrw-conventional-bread_my-incoming-total ]
+
+    if debug-mode = TRUE [ 
+      print " "
+      type agent-name type "'s estimated quantity available to contract this step (wheat-hrw-conventional-bread-quantity-estimate): " print wheat-hrw-conventional-bread-quantity-estimate 
+    ]
+    
+    while [ ( wheat-hrw-conventional-bread-promised < wheat-hrw-conventional-bread-quantity-estimate ) and ( any? buyers with [ wheat-hrw-conventional-bread_contract-space-available > 0 ] ) ] [
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "--- beginning while loop"
+        print " " ]
+      
+      if debug-mode = true [
+        print " "
+        print "we are thinking about buyers!"
+        type "seller name: " type agent-name type " | wheat-hrw-conventional-bread-promised: " type wheat-hrw-conventional-bread-promised type " | wheat-hrw-conventional-bread-quantity-estimate: " print wheat-hrw-conventional-bread-quantity-estimate 
+      ]
+
+      let buyers-with-capacity ( buyers with [ wheat-hrw-conventional-bread_contract-space-available > 0 ] )
+      if debug-mode = true [
+        print " "
+        type "buyers with capacity: " type buyers-with-capacity 
+      ]
+      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity
+          if debug-mode = true [ type " | id of bidding buyers: " print [id] of bidding_buyers ] 
+        ]  
+        [ set bidding_buyers buyers-with-capacity
+          if debug-mode = true [ type " | id of bidding buyers: " print [id] of bidding_buyers ]
+        ]
+
+      let my-buyer n-of 1 ( bidding_buyers with-max [ wheat-hrw-conventional-bread_price-to-buy ] )
+        
+      set wheat-hrw-conventional-bread_price-to-sell item 0 [ wheat-hrw-conventional-bread_price-to-buy ] of my-buyer
+      if ( week = 5 ) or ( week = 18 ) [ set wheat-hrw-conventional-bread_price-to-sell ( wheat-hrw-conventional-bread_price-to-sell * 1.1 ) ] ; prices are 10% higher during the off-season
+      if debug-mode = true [
+        print " "
+        type "price to buy: " print [ wheat-hrw-conventional-bread_price-to-buy ] of my-buyer
+      ]
+        
+      let col-id id
+      let row-id 0
+      if debug-mode = true [ 
+        print " "
+        type "my buyer: " type [ agent-name ] of my-buyer type " | my buyer's space available: " print [ wheat-hrw-conventional-bread_contract-space-available ] of my-buyer 
+      ]
+      ask my-buyer [ set row-id id ]
+
+      let rounded-price ( precision ( wheat-hrw-conventional-bread_price-to-sell ) 2 )
+      table_set wheat-table_hrw-conventional-bread row-id col-id WHEAT_PRICE rounded-price debug-mode
+         
+      if debug-mode = TRUE [ 
+        print " "
+        print "--- end of price negotatiations - moving on to quantity negotiation"
+        print " " 
+      ]
+              
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+      let contract-space-available item 0 ( [ wheat-hrw-conventional-bread_contract-space-available ] of my-buyer )
+      let seller_wheat-available ( wheat-hrw-conventional-bread-quantity-estimate - wheat-hrw-conventional-bread-promised )
+        
+      ifelse contract-space-available >= seller_wheat-available
+        [ set contracted-this-time seller_wheat-available ]
+        [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]  
+        
+      if debug-mode = TRUE [
+        print " "
+        type "starting bread promised: " type wheat-hrw-conventional-bread-promised 
+      ]  
+        
+      table_create_and_sum wheat-table_hrw-conventional-bread row-id col-id WHEAT_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to wheat quantity table
+      table_create_and_sum wheat-table_hrw-conventional-bread row-id col-id WHEAT_OUTSTANDING_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to wheat quantity table
+        
+      if debug-mode = TRUE [ type " | amount contracted this time: " type contracted-this-time ]
+        
+      set wheat-hrw-conventional-bread-promised ( wheat-hrw-conventional-bread-promised + contracted-this-time )  
+      if debug-mode = TRUE [ type " | updated bread promised: " type wheat-hrw-conventional-bread-promised ]                
+      ask my-buyer [
+        set wheat-hrw-conventional-bread_contract-space-available ( wheat-hrw-conventional-bread_contract-space-available - contracted-this-time )
+        set wheat-hrw-conventional-bread_my-incoming-total ( wheat-hrw-conventional-bread_my-incoming-total + contracted-this-time)
+        if debug-mode = true [ type " | my buyer's updated space available: " print wheat-hrw-conventional-bread_contract-space-available ] 
+      ]              
+    ]
+      
+    if debug-mode = TRUE [ 
+      print " "
+      print "--- end of while loop"
+      print " " ]
+      
+      ]   
+    
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "END OF NEGOTIATIONS FOR THIS AGENT"
+      print "-------------------------------------------------------"
+      print " " ]
+        
+  ]
+  
+end 
+
+
+; END OF THIS wheat TYPE
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+; START OF NEW wheat TYPE
+
+
+to priceAdjustments_hrwOrganicWheat [ buyers  buyer_count ]
+  
+  ask buyers [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) )
+    let other-buyers other buyers 
+    let comparison-group n-of subgroup-number other-buyers
+    if wheat-hrw-organic_price-to-buy < min [ wheat-hrw-organic_price-to-buy ] of comparison-group   
+      [ set wheat-hrw-organic_price-to-buy ( wheat-hrw-organic_price-to-buy * 1.1 ) ]
+    if wheat-hrw-organic_price-to-buy > max [ wheat-hrw-organic_price-to-buy ] of comparison-group  
+      [ set wheat-hrw-organic_price-to-buy ( wheat-hrw-organic_price-to-buy * .9 ) ] 
+  ]
+ 
+end
+
+
+to setContracts_hrwOrganicWheat [ sellers  buyers  buyer_count  loyalty ]
+  
+  if ( year != 1 and buyer_count > 1 ) [ priceAdjustments_hrwOrganicWheat  buyers buyer_count ]
+  ask buyers [ set wheat-hrw-organic_contract-space-available ( wheat-hrw-organic_inventory-maximum - wheat-hrw-organic_inventory-current ) ]
+  
+  ask sellers [
+            
+    let wheat-hrw-organic-quantity-estimate 0
+    let contracted-this-time 0
+    
+    if sellers != wheat_farmers [
+      if wheat-hrw-organic_my-incoming-total < 0 [ set wheat-hrw-organic_my-incoming-total 0 ] 
+    ]
+    
+    if sellers = wheat_farmers [
+      if week = 31 [ set wheat-hrw-organic-quantity-estimate ( wheat-farmers_yield-estimated_hrw-organic * .5 ) ]
+      if week = 5 [ set wheat-hrw-organic-quantity-estimate ( wheat-hrw-organic_inventory-current * .5 ) ]
+      if week = 18 [ set wheat-hrw-organic-quantity-estimate wheat-hrw-organic_inventory-current ]
+    ]
+    
+    if sellers = wheat_elevators [ set wheat-hrw-organic-quantity-estimate wheat-hrw-organic_my-incoming-total ]
+    
+    while [ ( wheat-hrw-organic-promised < wheat-hrw-organic-quantity-estimate ) and ( any? buyers with [ wheat-hrw-organic_contract-space-available > 0 ] ) ] [
+
+      let buyers-with-capacity ( buyers with [ wheat-hrw-organic_contract-space-available > 0 ] )      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity ]  
+        [ set bidding_buyers buyers-with-capacity ]
+
+        let my-buyer n-of 1 ( bidding_buyers with-max [ wheat-hrw-organic_price-to-buy ] )
+        set wheat-hrw-organic_price-to-sell item 0 [ wheat-hrw-organic_price-to-buy ] of my-buyer
+        if ( week = 5 ) or ( week = 18 ) [ 
+          set wheat-hrw-organic_price-to-sell ( wheat-hrw-organic_price-to-sell * 1.1 )                   ; prices are 10% higher during the off-season
+        ] 
+        
+        let col-id id
+        let row-id 0
+        ask my-buyer [ set row-id id ]
+        let rounded-price precision ( wheat-hrw-organic_price-to-sell ) 2
+        table_set wheat-table_hrw-organic row-id col-id WHEAT_PRICE rounded-price debug-mode    
+        
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+        let contract-space-available item 0 ( [ wheat-hrw-organic_contract-space-available ] of my-buyer )
+        let seller_wheat-available ( wheat-hrw-organic-quantity-estimate - wheat-hrw-organic-promised )
+        
+        ifelse contract-space-available >= seller_wheat-available
+          [ set contracted-this-time seller_wheat-available ]
+          [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]  
+        
+        table_create_and_sum wheat-table_hrw-organic row-id col-id WHEAT_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to wheat quantity table        
+        table_create_and_sum wheat-table_hrw-organic row-id col-id WHEAT_OUTSTANDING_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to wheat quantity table                
+        set wheat-hrw-organic-promised ( wheat-hrw-organic-promised + contracted-this-time )
+        
+        ask my-buyer [
+          set wheat-hrw-organic_contract-space-available ( wheat-hrw-organic_contract-space-available - contracted-this-time )
+          set wheat-hrw-organic_my-incoming-total ( wheat-hrw-organic_my-incoming-total + contracted-this-time) 
+        ]
+      ]
+    ]  
+  ]
+  
+end 
+
+
+; END OF THIS wheat TYPE
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+; START OF NEW wheat TYPE
+
+
+to priceAdjustments_hrwOrganicFlour [ buyers buyer_count ]
+ 
+  ask buyers [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) )
+    let other-buyers other buyers 
+    let comparison-group n-of subgroup-number other-buyers
+    if wheat-hrw-organic-flour_price-to-buy < min [ wheat-hrw-organic-flour_price-to-buy ] of comparison-group   
+      [ set wheat-hrw-organic-flour_price-to-buy ( wheat-hrw-organic-flour_price-to-buy * 1.1 ) ]
+    if wheat-hrw-organic-flour_price-to-buy > max [ wheat-hrw-organic-flour_price-to-buy ] of comparison-group  
+      [ set wheat-hrw-organic-flour_price-to-buy ( wheat-hrw-organic-flour_price-to-buy * .9 ) ] 
+  ]
+  
+end
+
+
+to setContracts_hrwOrganicFlour [ sellers  buyers  buyer_count  loyalty ]
+  
+  if debug-mode = TRUE [ 
+    print " "
+    print "------------------------------------------------------"
+    type "CONTRACTING STEP: " type sellers type " sell to " print buyers
+    print "------------------------------------------------------" ]
+  
+  if ( year != 1 and buyer_count > 1 ) [ priceAdjustments_hrwOrganicFlour  buyers buyer_count ]
+  ask buyers [ set wheat-hrw-organic-flour_contract-space-available ( wheat-hrw-organic-flour_inventory-maximum - wheat-hrw-organic-flour_inventory-current ) ]
+  
+  ask sellers [
+    
+    if debug-mode = TRUE [ 
+        print " "  
+        print "-------------------------------------------------------"
+        print "beginning negotation"
+        print "-------------------------------------------------------"
+        print " " ]
+    
+    let wheat-hrw-organic-flour-quantity-estimate 0
+    let contracted-this-time 0
+    
+    ;; wheat mills assess their incoming wheat amount, then account for the wheat> flour conversion factor before deciding how much flour they'll have to offer. they then negotiate contracts with bakers first, and then distributors.
+    ;; thus, this code contracts away half the flour to bakers (transaction percent = .5) during their step, leaving what remains (transaction percent = 1) for distributors during their step.
+    ;; this also means that, hypothetically, if bakers don't have enough inventory space to buy half the flour produced in the system, distributors can purchase that overage in addition to their 50%.
+    ifelse sellers = wheat_mills
+    [ let transaction-percent 0
+      if buyers = wheat_bakers [ set transaction-percent .5 ]
+      if buyers = distributors [ set transaction-percent 1 ]         
+      set wheat-hrw-organic-flour-quantity-estimate ( ( wheat-hrw-organic_my-incoming-total * .75 ) * transaction-percent )
+    ]
+    [ set wheat-hrw-organic-flour-quantity-estimate wheat-hrw-organic-flour_my-incoming-total ]
+
+    if debug-mode = TRUE [ 
+      print " "
+      type agent-name type " estimated quantity available to contract this step (wheat-hrw-organic-flour-quantity-estimate): " print wheat-hrw-organic-flour-quantity-estimate 
+    ]
+    
+    while [ ( wheat-hrw-organic-flour-promised < wheat-hrw-organic-flour-quantity-estimate ) and ( any? buyers with [ wheat-hrw-organic-flour_contract-space-available > 0 ] ) ] [
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "beginning while loop"
+        print "-------------------------------------------------------"
+        print " " ]
+      
+      if debug-mode = true [
+        print " "
+        print "we are thinking about buyers!"
+        type "seller name: " type agent-name type " | seller id: " print id
+        type "wheat-hrw-organic-flour-promised: " type wheat-hrw-organic-flour-promised type " | wheat-hrw-organic-flour-quantity-estimate: " print wheat-hrw-organic-flour-quantity-estimate 
+      ]
+
+      let buyers-with-capacity ( buyers with [ wheat-hrw-organic-flour_contract-space-available > 0 ] )
+      if debug-mode = true [
+        print " "
+        type "buyers with capacity: " print buyers-with-capacity ]
+      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            type "if half - id of bidding buyers: " print [id] of bidding_buyers ] 
+        ]  
+        [ set bidding_buyers buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            type "else half - id of bidding buyers: " type [id] of bidding_buyers
+          ]
+        ]
+
+        let my-buyer n-of 1 ( bidding_buyers with-max [ wheat-hrw-organic-flour_price-to-buy ] )
+        set wheat-hrw-organic-flour_price-to-sell item 0 [ wheat-hrw-organic-flour_price-to-buy ] of my-buyer
+        if ( week = 5 ) or ( week = 18 ) [ set wheat-hrw-organic-flour_price-to-sell ( wheat-hrw-organic-flour_price-to-sell * 1.1 ) ] ; prices are 10% higher during the off-season
+        if debug-mode = true [
+          print " "
+          type "price to buy: " print [ wheat-hrw-organic-flour_price-to-buy ] of my-buyer
+        ]
+        
+        let col-id id
+        let row-id 0
+        if debug-mode = true [ 
+          print " "
+          type "my buyer's name: " type [ agent-name ] of my-buyer type " | my buyer's id: " type [ id ] of my-buyer type " | my buyer's space available: " print [ wheat-hrw-organic-flour_contract-space-available ] of my-buyer ]
+        ask my-buyer [
+          set row-id id ]
+ 
+      let rounded-price ( precision ( wheat-hrw-organic-flour_price-to-sell ) 2 )
+      table_set wheat-table_hrw-organic-flour row-id col-id WHEAT_PRICE rounded-price debug-mode
+         
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "end of price negotatiations - moving on to quantity negotiation"
+        print "-------------------------------------------------------"
+        print " " ]
+              
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+      let contract-space-available item 0 ( [ wheat-hrw-organic-flour_contract-space-available ] of my-buyer )
+      let seller_wheat-available ( wheat-hrw-organic-flour-quantity-estimate - wheat-hrw-organic-flour-promised )
+        
+      if debug-mode = TRUE [
+        print ""
+        type "my buyer's contract space available: " type contract-space-available type " | my wheat to sell: " print seller_wheat-available
+      ]
+      
+      ifelse contract-space-available >= seller_wheat-available
+        [ set contracted-this-time seller_wheat-available ]
+        [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]  
+        
+      if debug-mode = TRUE [
+        print " "
+        type "amount promised: " type wheat-hrw-organic-flour-promised 
+      ]  
+        
+      table_create_and_sum wheat-table_hrw-organic-flour row-id col-id WHEAT_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to wheat quantity table
+        
+      table_create_and_sum wheat-table_hrw-organic-flour row-id col-id WHEAT_OUTSTANDING_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to wheat quantity table
+        
+      if debug-mode = TRUE [
+        type " | amount contracted this time: " type contracted-this-time 
+      ]
+        
+      set wheat-hrw-organic-flour-promised ( wheat-hrw-organic-flour-promised + contracted-this-time )   
+      
+      if debug-mode = TRUE [
+        type " | updated amount promised: " print wheat-hrw-organic-flour-promised
+      ]
+               
+      ask my-buyer [
+        set wheat-hrw-organic-flour_contract-space-available ( wheat-hrw-organic-flour_contract-space-available - contracted-this-time )
+        set wheat-hrw-organic-flour_my-incoming-total ( wheat-hrw-organic-flour_my-incoming-total + contracted-this-time)
+        if debug-mode = true [
+          print " "
+          type "my buyer's updated space available: " print wheat-hrw-organic-flour_contract-space-available ] 
+      ]
+    ]
+      
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "end of while loop"
+      print "-------------------------------------------------------"
+      print " " ]
+      
+      ]   
+    
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "END OF NEGOTIATIONS FOR THIS AGENT"
+      print "-------------------------------------------------------"
+      print " " ]
+ 
+  ]  
+  
+end 
+
+
+; END OF THIS wheat TYPE
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+; START OF NEW wheat TYPE
+
+
+to priceAdjustments_hrwOrganicBread [ buyers buyer_count ]
+  
+  ask buyers [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) )
+    let other-buyers other buyers 
+    let comparison-group n-of subgroup-number other-buyers
+    if wheat-hrw-organic-bread_price-to-buy < min [ wheat-hrw-organic-bread_price-to-buy ] of comparison-group   
+      [ set wheat-hrw-organic-bread_price-to-buy ( wheat-hrw-organic-bread_price-to-buy * 1.1 ) ]
+    if wheat-hrw-organic-bread_price-to-buy > max [ wheat-hrw-organic-bread_price-to-buy ] of comparison-group  
+      [ set wheat-hrw-organic-bread_price-to-buy ( wheat-hrw-organic-bread_price-to-buy * .9 ) ] 
+  ]
+  
+end
+
+
+to setContracts_hrwOrganicBread [ sellers  buyers  buyer_count  loyalty ]
+  
+  if debug-mode = TRUE [ 
+    print " "
+    print "------------------------------------------------------"
+    type "CONTRACTING STEP: " type sellers type " sell to " print buyers
+    print "------------------------------------------------------" ]
+  
+  if ( year != 1 and buyer_count > 1 ) [ priceAdjustments_hrwOrganicBread  buyers buyer_count ]
+  ask buyers [ set wheat-hrw-organic-bread_contract-space-available ( wheat-hrw-organic-bread_inventory-maximum - wheat-hrw-organic-bread_inventory-current ) ]
+  
+  ask sellers [
+    
+    if debug-mode = TRUE [ 
+        print " "  
+        print "--- beginning negotation"
+        print " " ]
+    
+    let wheat-hrw-organic-bread-quantity-estimate 0
+    let contracted-this-time 0
+    
+    ifelse sellers = wheat_bakers 
+    [ set wheat-hrw-organic-bread-quantity-estimate wheat-hrw-organic-flour_my-incoming-total ]
+    [ set wheat-hrw-organic-bread-quantity-estimate wheat-hrw-organic-bread_my-incoming-total ]
+
+    if debug-mode = TRUE [ 
+      print " "
+      type agent-name type "'s estimated quantity available to contract this step (wheat-hrw-organic-bread-quantity-estimate): " print wheat-hrw-organic-bread-quantity-estimate 
+    ]
+    
+    while [ ( wheat-hrw-organic-bread-promised < wheat-hrw-organic-bread-quantity-estimate ) and ( any? buyers with [ wheat-hrw-organic-bread_contract-space-available > 0 ] ) ] [
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "--- beginning while loop"
+        print " " ]
+      
+      if debug-mode = true [
+        print " "
+        print "we are thinking about buyers!"
+        type "seller name: " type agent-name type " | wheat-hrw-organic-bread-promised: " type wheat-hrw-organic-bread-promised type " | wheat-hrw-organic-bread-quantity-estimate: " print wheat-hrw-organic-bread-quantity-estimate 
+      ]
+
+      let buyers-with-capacity ( buyers with [ wheat-hrw-organic-bread_contract-space-available > 0 ] )
+      if debug-mode = true [
+        print " "
+        type "buyers with capacity: " type buyers-with-capacity 
+      ]
+      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity
+          if debug-mode = true [ type " | id of bidding buyers: " print [id] of bidding_buyers ] 
+        ]  
+        [ set bidding_buyers buyers-with-capacity
+          if debug-mode = true [ type " | id of bidding buyers: " print [id] of bidding_buyers ]
+        ]
+
+      let my-buyer n-of 1 ( bidding_buyers with-max [ wheat-hrw-organic-bread_price-to-buy ] )
+        
+      set wheat-hrw-organic-bread_price-to-sell item 0 [ wheat-hrw-organic-bread_price-to-buy ] of my-buyer
+      if ( week = 5 ) or ( week = 18 ) [ set wheat-hrw-organic-bread_price-to-sell ( wheat-hrw-organic-bread_price-to-sell * 1.1 ) ] ; prices are 10% higher during the off-season
+      if debug-mode = true [
+        print " "
+        type "price to buy: " print [ wheat-hrw-organic-bread_price-to-buy ] of my-buyer
+      ]
+        
+      let col-id id
+      let row-id 0
+      if debug-mode = true [ 
+        print " "
+        type "my buyer: " type [ agent-name ] of my-buyer type " | my buyer's space available: " print [ wheat-hrw-organic-bread_contract-space-available ] of my-buyer 
+      ]
+      ask my-buyer [ set row-id id ]
+
+      let rounded-price ( precision ( wheat-hrw-organic-bread_price-to-sell ) 2 )
+      table_set wheat-table_hrw-organic-bread row-id col-id WHEAT_PRICE rounded-price debug-mode
+         
+      if debug-mode = TRUE [ 
+        print " "
+        print "--- end of price negotatiations - moving on to quantity negotiation"
+        print " " 
+      ]
+              
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+      let contract-space-available item 0 ( [ wheat-hrw-organic-bread_contract-space-available ] of my-buyer )
+      let seller_wheat-available ( wheat-hrw-organic-bread-quantity-estimate - wheat-hrw-organic-bread-promised )
+        
+      ifelse contract-space-available >= seller_wheat-available
+        [ set contracted-this-time seller_wheat-available ]
+        [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]  
+        
+      if debug-mode = TRUE [
+        print " "
+        type "starting bread promised: " type wheat-hrw-organic-bread-promised 
+      ]  
+        
+      table_create_and_sum wheat-table_hrw-organic-bread row-id col-id WHEAT_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to wheat quantity table
+      table_create_and_sum wheat-table_hrw-organic-bread row-id col-id WHEAT_OUTSTANDING_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to wheat quantity table
+        
+      if debug-mode = TRUE [ type " | amount contracted this time: " type contracted-this-time ]
+        
+      set wheat-hrw-organic-bread-promised ( wheat-hrw-organic-bread-promised + contracted-this-time )  
+      if debug-mode = TRUE [ type " | updated bread promised: " type wheat-hrw-organic-bread-promised ]                
+      ask my-buyer [
+        set wheat-hrw-organic-bread_contract-space-available ( wheat-hrw-organic-bread_contract-space-available - contracted-this-time )
+        set wheat-hrw-organic-bread_my-incoming-total ( wheat-hrw-organic-bread_my-incoming-total + contracted-this-time)
+        if debug-mode = true [ type " | my buyer's updated space available: " print wheat-hrw-organic-bread_contract-space-available ] 
+      ]              
+    ]
+      
+    if debug-mode = TRUE [ 
+      print " "
+      print "--- end of while loop"
+      print " " ]
+      
+      ]   
+    
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "END OF NEGOTIATIONS FOR THIS AGENT"
+      print "-------------------------------------------------------"
+      print " " ]
+        
+  ]  
+  
+end 
+
+
+; END OF THIS wheat TYPE
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+; START OF NEW wheat TYPE
+
+
+to priceAdjustments_snowmassConventionalWheat [ buyers  buyer_count ]
+  
+  ask buyers [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) )
+    let other-buyers other buyers 
+    let comparison-group n-of subgroup-number other-buyers
+    if wheat-snowmass-conventional_price-to-buy < min [ wheat-snowmass-conventional_price-to-buy ] of comparison-group   
+      [ set wheat-snowmass-conventional_price-to-buy ( wheat-snowmass-conventional_price-to-buy * 1.1 ) ]
+    if wheat-snowmass-conventional_price-to-buy > max [ wheat-snowmass-conventional_price-to-buy ] of comparison-group  
+      [ set wheat-snowmass-conventional_price-to-buy ( wheat-snowmass-conventional_price-to-buy * .9 ) ]    
+  ]
+  
+end
+
+
+to setContracts_snowmassConventionalWheat [ sellers  buyers  buyer_count  loyalty ]
+  
+  if ( year != 1 and buyer_count > 1 ) [ priceAdjustments_snowmassConventionalWheat  buyers buyer_count ]
+  ask buyers [ set wheat-snowmass-conventional_contract-space-available ( wheat-snowmass-conventional_inventory-maximum - wheat-snowmass-conventional_inventory-current ) ]
+  
+  ask sellers [
+            
+    let wheat-snowmass-conventional-quantity-estimate 0
+    let contracted-this-time 0
+    
+    if sellers != wheat_farmers [
+      if wheat-snowmass-conventional_my-incoming-total < 0 [ set wheat-snowmass-conventional_my-incoming-total 0 ] 
+    ]
+    
+    if sellers = wheat_farmers [
+      if week = 31 [ set wheat-snowmass-conventional-quantity-estimate ( wheat-farmers_yield-estimated_snowmass-conventional * .5 ) ]
+      if week = 5 [ set wheat-snowmass-conventional-quantity-estimate ( wheat-snowmass-conventional_inventory-current * .5 ) ]
+      if week = 18 [ set wheat-snowmass-conventional-quantity-estimate wheat-snowmass-conventional_inventory-current ]
+    ]
+    
+    if sellers = wheat_elevators [ set wheat-snowmass-conventional-quantity-estimate wheat-snowmass-conventional_my-incoming-total ]
+    
+    while [ ( wheat-snowmass-conventional-promised < wheat-snowmass-conventional-quantity-estimate ) and ( any? buyers with [ wheat-snowmass-conventional_contract-space-available > 0 ] ) ] [
+
+      let buyers-with-capacity ( buyers with [ wheat-snowmass-conventional_contract-space-available > 0 ] )      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity ]  
+        [ set bidding_buyers buyers-with-capacity ]
+
+        let my-buyer n-of 1 ( bidding_buyers with-max [ wheat-snowmass-conventional_price-to-buy ] )
+        set wheat-snowmass-conventional_price-to-sell item 0 [ wheat-snowmass-conventional_price-to-buy ] of my-buyer
+        if ( week = 5 ) or ( week = 18 ) [ 
+          set wheat-snowmass-conventional_price-to-sell ( wheat-snowmass-conventional_price-to-sell * 1.1 )                   ; prices are 10% higher during the off-season
+        ] 
+        
+        let col-id id
+        let row-id 0
+        ask my-buyer [ set row-id id ]
+        let rounded-price precision ( wheat-snowmass-conventional_price-to-sell ) 2
+        table_set wheat-table_snowmass-conventional row-id col-id WHEAT_PRICE rounded-price debug-mode    
+        
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+        let contract-space-available item 0 ( [ wheat-snowmass-conventional_contract-space-available ] of my-buyer )
+        let seller_wheat-available ( wheat-snowmass-conventional-quantity-estimate - wheat-snowmass-conventional-promised )
+        
+        ifelse contract-space-available >= seller_wheat-available
+          [ set contracted-this-time seller_wheat-available ]
+          [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]  
+        
+        table_create_and_sum wheat-table_snowmass-conventional row-id col-id WHEAT_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to wheat quantity table        
+        table_create_and_sum wheat-table_snowmass-conventional row-id col-id WHEAT_OUTSTANDING_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to wheat quantity table                
+        set wheat-snowmass-conventional-promised ( wheat-snowmass-conventional-promised + contracted-this-time )
+        
+        ask my-buyer [
+          set wheat-snowmass-conventional_contract-space-available ( wheat-snowmass-conventional_contract-space-available - contracted-this-time )
+          set wheat-snowmass-conventional_my-incoming-total ( wheat-snowmass-conventional_my-incoming-total + contracted-this-time) 
+        ]
+      ]
+    ]  
+  ]
+  
+end 
+
+
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+
+
+to priceAdjustments_snowmassConventionalFlour [ buyers buyer_count ]
+  
+  ask buyers [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) )
+    let other-buyers other buyers 
+    let comparison-group n-of subgroup-number other-buyers
+    if wheat-snowmass-conventional-flour_price-to-buy < min [ wheat-snowmass-conventional-flour_price-to-buy ] of comparison-group   
+      [ set wheat-snowmass-conventional-flour_price-to-buy ( wheat-snowmass-conventional-flour_price-to-buy * 1.1 ) ]
+    if wheat-snowmass-conventional-flour_price-to-buy > max [ wheat-snowmass-conventional-flour_price-to-buy ] of comparison-group  
+      [ set wheat-snowmass-conventional-flour_price-to-buy ( wheat-snowmass-conventional-flour_price-to-buy * .9 ) ] 
+  ]
+  
+end
+
+
+to setContracts_snowmassConventionalFlour [ sellers  buyers  buyer_count  loyalty ]
+  
+  if debug-mode = TRUE [ 
+    print " "
+    print "------------------------------------------------------"
+    type "CONTRACTING STEP: " type sellers type " sell to " print buyers
+    print "------------------------------------------------------" ]
+  
+  if ( year != 1 and buyer_count > 1 ) [ priceAdjustments_snowmassConventionalFlour  buyers buyer_count ]
+  ask buyers [ set wheat-snowmass-conventional-flour_contract-space-available ( wheat-snowmass-conventional-flour_inventory-maximum - wheat-snowmass-conventional-flour_inventory-current ) ]
+  
+  ask sellers [
+    
+    if debug-mode = TRUE [ 
+        print " "  
+        print "-------------------------------------------------------"
+        print "beginning negotation"
+        print "-------------------------------------------------------"
+        print " " ]
+    
+    let wheat-snowmass-conventional-flour-quantity-estimate 0
+    let contracted-this-time 0
+    
+    ;; wheat mills assess their incoming wheat amount, then account for the wheat> flour conversion factor before deciding how much flour they'll have to offer. they then negotiate contracts with bakers first, and then distributors.
+    ;; thus, this code contracts away half the flour to bakers (transaction percent = .5) during their step, leaving what remains (transaction percent = 1) for distributors during their step.
+    ;; this also means that, hypothetically, if bakers don't have enough inventory space to buy half the flour produced in the system, distributors can purchase that overage in addition to their 50%.
+    ifelse sellers = wheat_mills
+    [ let transaction-percent 0
+      if buyers = wheat_bakers [ set transaction-percent .5 ]
+      if buyers = distributors [ set transaction-percent 1 ]         
+      set wheat-snowmass-conventional-flour-quantity-estimate ( ( wheat-snowmass-conventional_my-incoming-total * .75 ) * transaction-percent )
+    ]
+    [ set wheat-snowmass-conventional-flour-quantity-estimate wheat-snowmass-conventional-flour_my-incoming-total ]
+
+    if debug-mode = TRUE [ 
+      print " "
+      type agent-name type " estimated quantity available to contract this step (wheat-snowmass-conventional-flour-quantity-estimate): " print wheat-snowmass-conventional-flour-quantity-estimate 
+    ]
+    
+    while [ ( wheat-snowmass-conventional-flour-promised < wheat-snowmass-conventional-flour-quantity-estimate ) and ( any? buyers with [ wheat-snowmass-conventional-flour_contract-space-available > 0 ] ) ] [
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "beginning while loop"
+        print "-------------------------------------------------------"
+        print " " ]
+      
+      if debug-mode = true [
+        print " "
+        print "we are thinking about buyers!"
+        type "seller name: " type agent-name type " | seller id: " print id
+        type "wheat-snowmass-conventional-flour-promised: " type wheat-snowmass-conventional-flour-promised type " | wheat-snowmass-conventional-flour-quantity-estimate: " print wheat-snowmass-conventional-flour-quantity-estimate 
+      ]
+
+      let buyers-with-capacity ( buyers with [ wheat-snowmass-conventional-flour_contract-space-available > 0 ] )
+      if debug-mode = true [
+        print " "
+        type "buyers with capacity: " print buyers-with-capacity ]
+      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            type "if half - id of bidding buyers: " print [id] of bidding_buyers ] 
+        ]  
+        [ set bidding_buyers buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            type "else half - id of bidding buyers: " type [id] of bidding_buyers
+          ]
+        ]
+
+        let my-buyer n-of 1 ( bidding_buyers with-max [ wheat-snowmass-conventional-flour_price-to-buy ] )
+        set wheat-snowmass-conventional-flour_price-to-sell item 0 [ wheat-snowmass-conventional-flour_price-to-buy ] of my-buyer
+        if ( week = 5 ) or ( week = 18 ) [ set wheat-snowmass-conventional-flour_price-to-sell ( wheat-snowmass-conventional-flour_price-to-sell * 1.1 ) ] ; prices are 10% higher during the off-season
+        if debug-mode = true [
+          print " "
+          type "price to buy: " print [ wheat-snowmass-conventional-flour_price-to-buy ] of my-buyer
+        ]
+        
+        let col-id id
+        let row-id 0
+        if debug-mode = true [ 
+          print " "
+          type "my buyer's name: " type [ agent-name ] of my-buyer type " | my buyer's id: " type [ id ] of my-buyer type " | my buyer's space available: " print [ wheat-snowmass-conventional-flour_contract-space-available ] of my-buyer ]
+        ask my-buyer [
+          set row-id id ]
+ 
+      let rounded-price ( precision ( wheat-snowmass-conventional-flour_price-to-sell ) 2 )
+      table_set wheat-table_snowmass-conventional-flour row-id col-id WHEAT_PRICE rounded-price debug-mode
+         
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "end of price negotatiations - moving on to quantity negotiation"
+        print "-------------------------------------------------------"
+        print " " ]
+              
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+      let contract-space-available item 0 ( [ wheat-snowmass-conventional-flour_contract-space-available ] of my-buyer )
+      let seller_wheat-available ( wheat-snowmass-conventional-flour-quantity-estimate - wheat-snowmass-conventional-flour-promised )
+        
+      if debug-mode = TRUE [
+        print ""
+        type "my buyer's contract space available: " type contract-space-available type " | my wheat to sell: " print seller_wheat-available
+      ]
+      
+      ifelse contract-space-available >= seller_wheat-available
+        [ set contracted-this-time seller_wheat-available ]
+        [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]  
+        
+      if debug-mode = TRUE [
+        print " "
+        type "amount promised: " type wheat-snowmass-conventional-flour-promised 
+      ]  
+        
+      table_create_and_sum wheat-table_snowmass-conventional-flour row-id col-id WHEAT_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to wheat quantity table
+        
+      table_create_and_sum wheat-table_snowmass-conventional-flour row-id col-id WHEAT_OUTSTANDING_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to wheat quantity table
+        
+      if debug-mode = TRUE [
+        type " | amount contracted this time: " type contracted-this-time 
+      ]
+        
+      set wheat-snowmass-conventional-flour-promised ( wheat-snowmass-conventional-flour-promised + contracted-this-time )   
+      
+      if debug-mode = TRUE [
+        type " | updated amount promised: " print wheat-snowmass-conventional-flour-promised
+      ]
+               
+      ask my-buyer [
+        set wheat-snowmass-conventional-flour_contract-space-available ( wheat-snowmass-conventional-flour_contract-space-available - contracted-this-time )
+        set wheat-snowmass-conventional-flour_my-incoming-total ( wheat-snowmass-conventional-flour_my-incoming-total + contracted-this-time)
+        if debug-mode = true [
+          print " "
+          type "my buyer's updated space available: " print wheat-snowmass-conventional-flour_contract-space-available ] 
+      ]
+    ]
+      
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "end of while loop"
+      print "-------------------------------------------------------"
+      print " " ]
+      
+      ]   
+    
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "END OF NEGOTIATIONS FOR THIS AGENT"
+      print "-------------------------------------------------------"
+      print " " ]
+ 
+  ]  
+  
+end 
+
+
+; END OF THIS wheat TYPE
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+; START OF NEW wheat TYPE
+
+
+to priceAdjustments_snowmassConventionalBread [ buyers buyer_count ]
+  
+  ask buyers [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) )
+    let other-buyers other buyers 
+    let comparison-group n-of subgroup-number other-buyers
+    if wheat-snowmass-conventional-bread_price-to-buy < min [ wheat-snowmass-conventional-bread_price-to-buy ] of comparison-group   
+      [ set wheat-snowmass-conventional-bread_price-to-buy ( wheat-snowmass-conventional-bread_price-to-buy * 1.1 ) ]
+    if wheat-snowmass-conventional-bread_price-to-buy > max [ wheat-snowmass-conventional-bread_price-to-buy ] of comparison-group  
+      [ set wheat-snowmass-conventional-bread_price-to-buy ( wheat-snowmass-conventional-bread_price-to-buy * .9 ) ] 
+  ]
+  
+end
+
+to-report contractSpaceAvailable_snowmassConventionalBread [ buyers  debug ]
+  
+  ask buyers [
+    set wheat-snowmass-conventional-bread_contract-space-available ( wheat-snowmass-conventional-bread_inventory-maximum - wheat-snowmass-conventional-bread_inventory-current ) 
+    if debug = TRUE [ print " " print agent-name print "contract space available: " print wheat-snowmass-conventional-bread_contract-space-available print " " ] ]
+  report buyers
+    
+end
+
+
+to setContracts_snowmassConventionalBread [ sellers  buyers  buyer_count  loyalty ]
+  
+  if debug-mode = TRUE [ 
+    print " "
+    print "------------------------------------------------------"
+    type "CONTRACTING STEP: " type sellers type " sell to " print buyers
+    print "------------------------------------------------------" ]
+  
+  if ( year != 1 and buyer_count > 1 ) [ priceAdjustments_snowmassConventionalBread  buyers buyer_count ]
+  ask buyers [ set wheat-snowmass-conventional-bread_contract-space-available ( wheat-snowmass-conventional-bread_inventory-maximum - wheat-snowmass-conventional-bread_inventory-current ) ]
+  
+  ask sellers [
+    
+    if debug-mode = TRUE [ 
+        print " "  
+        print "--- beginning negotation"
+        print " " ]
+    
+    let wheat-snowmass-conventional-bread-quantity-estimate 0
+    let contracted-this-time 0
+    
+    ifelse sellers = wheat_bakers 
+    [ set wheat-snowmass-conventional-bread-quantity-estimate wheat-snowmass-conventional-flour_my-incoming-total ]
+    [ set wheat-snowmass-conventional-bread-quantity-estimate wheat-snowmass-conventional-bread_my-incoming-total ]
+
+    if debug-mode = TRUE [ 
+      print " "
+      type agent-name type "'s estimated quantity available to contract this step (wheat-snowmass-conventional-bread-quantity-estimate): " print wheat-snowmass-conventional-bread-quantity-estimate 
+    ]
+    
+    while [ ( wheat-snowmass-conventional-bread-promised < wheat-snowmass-conventional-bread-quantity-estimate ) and ( any? buyers with [ wheat-snowmass-conventional-bread_contract-space-available > 0 ] ) ] [
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "--- beginning while loop"
+        print " " ]
+      
+      if debug-mode = true [
+        print " "
+        print "we are thinking about buyers!"
+        type "seller name: " type agent-name type " | wheat-snowmass-conventional-bread-promised: " type wheat-snowmass-conventional-bread-promised type " | wheat-snowmass-conventional-bread-quantity-estimate: " print wheat-snowmass-conventional-bread-quantity-estimate 
+      ]
+
+      let buyers-with-capacity ( buyers with [ wheat-snowmass-conventional-bread_contract-space-available > 0 ] )
+      if debug-mode = true [
+        print " "
+        type "buyers with capacity: " type buyers-with-capacity 
+      ]
+      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity
+          if debug-mode = true [ type " | id of bidding buyers: " print [id] of bidding_buyers ] 
+        ]  
+        [ set bidding_buyers buyers-with-capacity
+          if debug-mode = true [ type " | id of bidding buyers: " print [id] of bidding_buyers ]
+        ]
+
+      let my-buyer n-of 1 ( bidding_buyers with-max [ wheat-snowmass-conventional-bread_price-to-buy ] )
+        
+      set wheat-snowmass-conventional-bread_price-to-sell item 0 [ wheat-snowmass-conventional-bread_price-to-buy ] of my-buyer
+      if ( week = 5 ) or ( week = 18 ) [ set wheat-snowmass-conventional-bread_price-to-sell ( wheat-snowmass-conventional-bread_price-to-sell * 1.1 ) ] ; prices are 10% higher during the off-season
+      if debug-mode = true [
+        print " "
+        type "price to buy: " print [ wheat-snowmass-conventional-bread_price-to-buy ] of my-buyer
+      ]
+        
+      let col-id id
+      let row-id 0
+      if debug-mode = true [ 
+        print " "
+        type "my buyer: " type [ agent-name ] of my-buyer type " | my buyer's space available: " print [ wheat-snowmass-conventional-bread_contract-space-available ] of my-buyer 
+      ]
+      ask my-buyer [ set row-id id ]
+
+      let rounded-price ( precision ( wheat-snowmass-conventional-bread_price-to-sell ) 2 )
+      table_set wheat-table_snowmass-conventional-bread row-id col-id WHEAT_PRICE rounded-price debug-mode
+         
+      if debug-mode = TRUE [ 
+        print " "
+        print "--- end of price negotatiations - moving on to quantity negotiation"
+        print " " 
+      ]
+              
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+      let contract-space-available item 0 ( [ wheat-snowmass-conventional-bread_contract-space-available ] of my-buyer )
+      let seller_wheat-available ( wheat-snowmass-conventional-bread-quantity-estimate - wheat-snowmass-conventional-bread-promised )
+        
+      ifelse contract-space-available >= seller_wheat-available
+        [ set contracted-this-time seller_wheat-available ]
+        [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]  
+        
+      if debug-mode = TRUE [
+        print " "
+        type "starting bread promised: " type wheat-snowmass-conventional-bread-promised 
+      ]  
+        
+      table_create_and_sum wheat-table_snowmass-conventional-bread row-id col-id WHEAT_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to wheat quantity table
+      table_create_and_sum wheat-table_snowmass-conventional-bread row-id col-id WHEAT_OUTSTANDING_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to wheat quantity table
+        
+      if debug-mode = TRUE [ type " | amount contracted this time: " type contracted-this-time ]
+        
+      set wheat-snowmass-conventional-bread-promised ( wheat-snowmass-conventional-bread-promised + contracted-this-time )  
+      if debug-mode = TRUE [ type " | updated bread promised: " type wheat-snowmass-conventional-bread-promised ]                
+      ask my-buyer [
+        set wheat-snowmass-conventional-bread_contract-space-available ( wheat-snowmass-conventional-bread_contract-space-available - contracted-this-time )
+        set wheat-snowmass-conventional-bread_my-incoming-total ( wheat-snowmass-conventional-bread_my-incoming-total + contracted-this-time)
+        if debug-mode = true [ type " | my buyer's updated space available: " print wheat-snowmass-conventional-bread_contract-space-available ] 
+      ]              
+    ]
+      
+    if debug-mode = TRUE [ 
+      print " "
+      print "--- end of while loop"
+      print " " ]
+      
+      ]   
+    
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "END OF NEGOTIATIONS FOR THIS AGENT"
+      print "-------------------------------------------------------"
+      print " " ]
+        
+  ]  
+  
+end 

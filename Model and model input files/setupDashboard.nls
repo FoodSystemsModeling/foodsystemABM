@@ -1,0 +1,1871 @@
+to setup-dashboard
+  ask patches [ set farmer -1 ]
+  if potato-model = TRUE [ setup-potato_farmers ]
+  if wheat-model = TRUE [ setup-wheat_farmers ]
+  if peach-model = TRUE [ setup-peach_farmers ]
+  if beef-model = TRUE [ 
+    setup-beef_ranchers
+    locate-beef_ranchers
+  ]
+
+  setup-certified-organic
+  
+  if potato-model = TRUE [ setup-potato-farm-crop-allocation ]
+  if wheat-model = TRUE [ setup-wheat-farm-crop-allocation ]
+  ; Add peaches here when dssat done
+
+  setup-display
+
+  if potato-model = TRUE [ setup-potato-agents ]
+  if wheat-model = TRUE [ setup-wheat-agents ]
+  if peach-model = TRUE [ setup-peach-agents ]
+  if beef-model = TRUE [ setup-beef-agents ]
+  
+  setup-distributors
+  setup-dps_buyers
+  move-agents
+  
+  setup-estimated-yields
+  setup-tables
+  ready-plots
+  
+end
+
+
+to setup-potato_farmers
+  
+  ;; -------------------------------------------------
+
+  ;; initialize potato producers by county
+
+  create-potato_farmers 26; Alamosa County
+  [
+    set home-county 1
+    set initialized 0
+    set id who
+    set agent-name word "Alamosa potato farmer " id
+  ]
+
+    ask n-of 5 potato_farmers with [initialized = 0]; set parameters for farms farming between 100 and 250 acres of potatoes per year
+     [
+      set hectares-farmed-potatoes random-normal 175 25 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "small"
+     ]
+    ask n-of 11 potato_farmers with [initialized = 0]; set parameters for farms farming between 250 and 500 acres of potatoes per year
+     [
+      set hectares-farmed-potatoes random-normal 375 41.67 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "medium"
+     ]
+    ask n-of 3 potato_farmers with [initialized = 0]; set parameters for farms farming between 500 and 750 acres of potatoes per year
+     [
+      set hectares-farmed-potatoes random-normal 625 41.67 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "medium"
+     ]
+    ask n-of 3 potato_farmers with [initialized = 0]; set parameters for farms farming between 750 and 1000 acres of potatoes per year
+     [
+      set hectares-farmed-potatoes random-normal 875 41.67 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "medium"
+     ]
+    ask n-of 4 potato_farmers with [initialized = 0]; set parameters for farms farming >1000 acres
+     [
+      set hectares-farmed-potatoes random-normal 1601 100 * 0.405 ; assign acreage and convert to hectares of potatoes per year
+      set initialized 1
+      set farm-size "large"
+     ]
+
+  create-potato_farmers 41; Rio Grande County
+  [
+    set home-county 6
+    set initialized 0
+    set id who
+    set agent-name word "Rio Grande potato farmer " id
+  ]
+
+  ask n-of 21 potato_farmers with [initialized = 0]; set parameters for farms farming between 100 and 250 acres of potatoes per year
+     [
+      set hectares-farmed-potatoes random-normal 175 25 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "small"
+     ]
+    ask n-of 10 potato_farmers with [initialized = 0]; set parameters for farms farming between 250 and 500 acres of potatoes per year
+     [
+      set hectares-farmed-potatoes random-normal 375 41.67 * 0.405 ; assign acreage and convert to hectares
+      set hectares-farmed-total hectares-farmed-potatoes * 2; allows for simple 1:1 rotation with barley
+      set initialized 1
+      set farm-size "medium"
+     ]
+    ask n-of 4 potato_farmers with [initialized = 0]; set parameters for farms farming between 500 and 750 acres of potatoes per year
+     [
+      set hectares-farmed-potatoes random-normal 625 41.67 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "medium"
+     ]
+    ask n-of 3 potato_farmers with [initialized = 0]; set parameters for farms farming between 750 and 1000 acres of potatoes per year
+     [
+      set hectares-farmed-potatoes random-normal 875 41.67 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "medium"
+     ]
+    ask n-of 3 potato_farmers with [initialized = 0]; set parameters for farms farming >1000 acres of potatoes per year
+     [
+      set hectares-farmed-potatoes random-normal 1561 100 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "large"
+     ]
+
+create-potato_farmers 29; Saguache County
+  [
+    set home-county 8
+    set initialized 0
+    set id who
+    set agent-name word "Saguache potato farmer " id
+  ]
+
+  ask n-of 11 potato_farmers with [initialized = 0]; set parameters for farms farming between 100 and 250 acres of potatoes per year
+     [
+      set hectares-farmed-potatoes random-normal 175 25 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "small"
+     ]
+    ask n-of 9 potato_farmers with [initialized = 0]; set parameters for farms farming between 250 and 500 acres of potatoes per year
+     [
+      set hectares-farmed-potatoes random-normal 375 41.67 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "medium"
+     ]
+    ask n-of 3 potato_farmers with [initialized = 0]; set parameters for farms farming between 500 and 750 acres of potatoes per year
+     [
+      set hectares-farmed-potatoes random-normal 625 41.67 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "medium"
+     ]
+    ask n-of 3 potato_farmers with [initialized = 0]; set parameters for farms farming between 750 and 1000 acres of potatoes per year
+     [
+      set hectares-farmed-potatoes random-normal 875 41.67 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "medium"
+     ]
+    ask n-of 3 potato_farmers with [initialized = 0]; set parameters for farms farming >1000 acres of potatoes per year
+     [
+      set hectares-farmed-potatoes random-normal 2255 100 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "large"
+     ]
+  
+  ;; -------------------------------------------------
+
+  ;; set general potato producer variables
+  set number-potato_farmers (count potato_farmers)
+  let potato-patches patches with [ (county-potato = 1 ) and ( potato-yes-no = 1 ) ]
+
+  ask potato_farmers
+  [
+    set assets 0 
+    set assets-initial assets
+    set short-suppply-chain-interactions 0
+    set loyalty-to-buyer-id 0
+    set potatoes-russet-conventional-fresh_inventory-maximum 450000000
+    set potatoes-russet-conventional-fresh-small_inventory-maximum 450000000
+    set potatoes-russet-conventional-fresh_price-to-sell precision (random-normal potato-conventional-russet_price-farmgate-avg potato-conventional-russet_price-farmgate-stdev)  3  ; do we need to update this price variable every season?
+    set hectares-farmed-potatoes round hectares-farmed-potatoes
+    set hectares-farmed-total hectares-farmed-potatoes * 1.5; allows for simple 2:1 rotation with potato:barley ; are we sure that this always holds?
+    set farm-id who
+    set color green
+    set shape "circle"
+    set size .5
+    set patches-occupied round (hectares-farmed-total / 100 - 0.5) + 1 ; results in number of patches owned equal to rounded up to next highest hundred hectares / 100
+
+    let available-patches potato-patches with [ occupied = 0 ]
+    move-to one-of available-patches   
+
+    ask patch-here [
+      set occupied 1
+      set farmer [farm-id] of myself
+      set pcolor farmer ]
+
+    set my-patches ( patches with [farmer = [farm-id] of myself] )    
+
+    while [ ( count my-patches) < patches-occupied ] [
+
+      ask one-of my-patches [
+        let my-neighbors neighbors with [ ( occupied = 0 ) and ( potato-yes-no = 1 ) ]
+        ifelse any? my-neighbors [
+          ask one-of my-neighbors [
+            set occupied 1
+            set farmer [ farmer ] of myself
+            set pcolor farmer ] ]
+        [
+          let empty-patches potato-patches with [ occupied = 0 ]  ; patches with [ ( county-id = [county-id ] of myself ) and ( occupied = 0 ) and ( potato-yes-no = 1 ) ]
+          ask min-one-of empty-patches [distance myself] [
+            set occupied 1
+            set farmer [ farmer ] of myself
+            set pcolor farmer ] ]
+      ]
+      set my-patches ( potato-patches with [farmer = [farm-id] of myself] )
+    ]
+  ]
+
+  
+  ;; -------------------------------------------------
+
+  ;; set potato producer demographics: calculations in "2020-08-01 potato farmer demographics.txt"
+
+  ;; alamosa county
+  ask n-of 10 potato_farmers with [ home-county = 1 ] [ set not-male 1 ]
+  ask n-of 7 potato_farmers with [ home-county = 1 ] [ set first-time-farmer 1 ]
+  ask n-of 2 potato_farmers with [ home-county = 1 ] [ set young-farmer 1 ]
+  ask n-of 3 potato_farmers with [ home-county = 1 ] [ set not-white 1 ]
+  ask n-of 13 potato_farmers with [ home-county = 1 ] [ set primary-income 1 ]
+
+  ;; rio grande county
+  ask n-of 14 potato_farmers with [ home-county = 6 ] [ set not-male 1 ]
+  ask n-of 11 potato_farmers with [ home-county = 6 ] [ set first-time-farmer 1 ]
+  ask n-of 7 potato_farmers with [ home-county = 6 ] [ set young-farmer 1 ]
+  ask n-of 3 potato_farmers with [ home-county = 6 ] [ set not-white 1 ]
+  ask n-of 25 potato_farmers with [ home-county = 6 ] [ set primary-income 1 ]
+
+  ;; saguache county
+  ask n-of 10 potato_farmers with [ home-county = 8 ] [ set not-male 1 ]
+  ask n-of 7 potato_farmers with [ home-county = 8 ] [ set first-time-farmer 1 ]
+  ask n-of 2 potato_farmers with [ home-county = 8 ] [ set young-farmer 1 ]
+  ask n-of 3 potato_farmers with [ home-county = 8 ] [ set not-white 1 ]
+  ask n-of 21 potato_farmers with [ home-county = 8 ] [ set primary-income 1 ]
+
+  ;; -------------------------------------------------
+
+  ask potato_farmers [
+    let max-farm max-one-of potato_farmers [ hectares-farmed-potatoes ]
+    let max-farm-hectares [ hectares-farmed-potatoes ] of max-farm
+    set transition-likelihood-score ( .5 - (hectares-farmed-potatoes / max-farm-hectares ))
+    if not-male = 1 [
+      set transition-likelihood-score ( transition-likelihood-score * 1.1 ) ]
+    if first-time-farmer = 1 [
+      set transition-likelihood-score ( transition-likelihood-score * 1.1 ) ]
+    if young-farmer = 1 [
+      set transition-likelihood-score ( transition-likelihood-score * 1.1 ) ]
+    if not-white = 1 [
+      set transition-likelihood-score ( transition-likelihood-score * 1.1 ) ]
+    if transition-likelihood-score > 1 [ set transition-likelihood-score 1 ]
+    if transition-likelihood-score < 0 [ set transition-likelihood-score 0 ]
+    set tls-initial precision transition-likelihood-score 3
+
+    ifelse ( not-male = 0 ) and ( not-white = 0 )
+    [ if ( first-time-farmer = 1 ) and ( young-farmer = 1 ) [ set alternative-farmer 1 ] ]
+    [ if ( ( not-male + first-time-farmer + young-farmer + not-white ) > 1 ) [ set alternative-farmer 1 ] ]
+
+  ]
+  
+
+  
+
+  ;; -------------------------------------------------
+
+  ; initialize crop rotations
+
+  ask potato_farmers
+  [
+    set patches-in-potatoes round (hectares-farmed-potatoes / 100 + 0.5)
+    set patches-in-rotation patches-occupied - patches-in-potatoes
+    ifelse patches-in-rotation > 0
+    [
+      ask n-of patches-in-potatoes my-patches
+         [set rotation "potato"]
+      ask my-patches with [rotation = 0]
+         [set rotation "barley"]
+    ]
+    [
+      ask my-patches
+          [set rotation "potato"]
+    ]
+    ask one-of my-patches with [rotation = "potato"]
+          [set remainder-patch 1]  ; need to identify which patch grows less then 100 ha of potatoes and catches the remainder
+  ]
+  set potato-rotation-year 1 ; first year of rotation is set as of above, 3-year cycle
+
+end
+
+
+to setup-wheat_farmers
+  
+  ;; mean amount of land in each size tier is derived from FFAR subteam data spreadsheet (in Google drive) - standard deviations are educated guesses.
+  ;; our data source is in acres, so we convert to hectares, and make a final adjustment to make sure the distribution didn't lead to any farmers with a negative amount of land.
+  
+  create-wheat_farmers 234; Washington
+  [
+    set home-county 9
+    set initialized 0
+    set id who
+    set agent-name word "Washington wheat farmer " id
+  ]
+
+  ask n-of 67 wheat_farmers with [initialized = 0]
+  [
+    set hectares-farmed-wheat random-normal 375 62.5 * 0.405                      
+    set initialized 1
+    set farm-size "small"
+  ]
+  ask n-of 73 wheat_farmers with [initialized = 0]                               
+  [
+    set hectares-farmed-wheat random-normal 750 125 * 0.405
+    set initialized 1
+    set farm-size "medium"
+  ]
+  ask n-of 94 wheat_farmers with [initialized = 0]                                 
+  [
+    set hectares-farmed-wheat random-normal 1250 125 * 0.405
+    set initialized 1
+    set farm-size "large"
+  ]
+  ask wheat_farmers [
+    if hectares-farmed-wheat <= 0 [ set hectares-farmed-wheat 1 ]               
+  ]
+   
+  ;; -------------------------------------------------
+ 
+  set number-wheat_farmers ( count wheat_farmers )
+  let wheat-patches patches with [ county-wheat = 1 and wheat-yes-no = 1 ]  
+  let half-farmers round ( .5 * number-wheat_farmers )
+  let a-patch 0
+  
+  
+  ;; set general wheat producer variables, move farmers to their home patch, and assign that home patch to the farmer's wheat farm.
+  
+  ask wheat_farmers
+  [
+    set farm-id id
+    set color green
+    set shape "circle"
+    set size 0.5
+    set hectares-farmed-wheat round hectares-farmed-wheat
+    
+    set assets 0
+    set assets-initial assets
+    set loyalty-to-buyer-id 0 
+    
+    set wheat-hrw-conventional_inventory-maximum 450000000
+    set wheat-hrw-conventional_price-to-sell precision (random-normal wheat-hrw-conventional_price-farmgate-avg wheat-hrw-conventional_price-farmgate-stdev)  3
+    set wheat-hrw-organic_inventory-maximum 450000000
+    set wheat-hrw-organic_price-to-sell precision (random-normal wheat-hrw-organic_price-farmgate-avg wheat-hrw-organic_price-farmgate-stdev)  3
+    set wheat-snowmass-conventional_inventory-maximum 450000000
+    set wheat-snowmass-conventional_price-to-sell precision (random-normal wheat-snowmass-conventional_price-farmgate-avg wheat-snowmass-conventional_price-farmgate-stdev)  3
+    
+    let available-patches wheat-patches with [ occupied = 0 ]                        
+    move-to one-of available-patches                                                                      
+    set my-patches ( patch-set patch-here )
+    ask patch-here [
+      set occupied 1
+      set farmer [farm-id] of myself
+      set pcolor farmer 
+    ]
+  ]
+  
+  ;; initialize crop rotations and calculate total amount of land needed by each farmer depending on their rotation type.
+  ;; half of wheat farmers are assigned to 2-year wheat-fallow rotation and half of wheat farmers are assigned to 3-year corn-wheat-fallow rotation.
+  ;; this distribution is geographic, with farmers in eastern washington county being 3-year corn-wheat-fallow and farmers in western washington county being 2-year wheat-fallow.
+  
+  ask max-n-of half-farmers wheat_farmers [ xcor ] [ set corn-wheat-fallow-rotate 1 ]
+  ask wheat_farmers with [ corn-wheat-fallow-rotate != 1 ] [ set wheat-fallow-rotate 1 ]  
+  
+  let two-year-farmers wheat_farmers with [ wheat-fallow-rotate = 1 ]
+  let three-year-farmers wheat_farmers with [ corn-wheat-fallow-rotate = 1] 
+  
+  ask two-year-farmers [ 
+    set hectares-farmed-total ( hectares-farmed-wheat * 2 )
+    let wheat-rounded-patches ( ceiling ( hectares-farmed-wheat / 100 ) )
+    set patches-occupied ( wheat-rounded-patches * 2 ) 
+  ]
+  
+  ask three-year-farmers [ 
+    set hectares-farmed-total ( hectares-farmed-wheat * 3 ) 
+    let wheat-rounded-patches ( ceiling ( hectares-farmed-wheat / 100 ) )
+    set patches-occupied ( wheat-rounded-patches * 3 )
+  ]
+    
+  ;; assign farmers the rest of the land they need to complete their farm, and associate each patch with its farmer.
+  
+  ask wheat_farmers [
+    while [ ( count my-patches ) < patches-occupied ] [
+      ask one-of my-patches [
+        let my-neighbors neighbors with [ occupied = 0 and county-wheat = 1]                               
+        ifelse any? my-neighbors  [
+          ask one-of my-neighbors [
+            set occupied 1
+            set farmer [ farmer ] of myself
+            set pcolor farmer 
+            set a-patch self 
+          ] 
+        ]
+        [ 
+          let empty-patches wheat-patches with [ occupied = 0 ]
+          ask min-one-of empty-patches [distance myself] [
+            set occupied 1
+            set farmer [ farmer ] of myself
+            set pcolor farmer 
+            set a-patch self 
+          ] 
+        ]
+      ]
+      set my-patches ( patch-set my-patches a-patch )
+      ask my-patches [
+        set my-farmer ( wheat_farmers with [ farm-id = [farmer] of myself] )
+      ]
+    ]
+  ]
+
+  ;; -------------------------------------------------
+
+  ;; set wheat producer sociodemographics, which are used in determining whether each farm is "alternative" or "mainstream"
+  ;; calculations for deriving these numbers are in meeting notes > "2020-12-11 wheat farmer demographics.txt"
+  ;; note that each sociodemographic variable is assigned independently - if interaction effects do exist (if, for example, non-white farmers are more likely to be women), those relationships are not available in our data set and thus are not accounted for here.
+  
+  ;; washington county
+  ask n-of 89 wheat_farmers with [ home-county = 9 ] [ set not-male 1 ]
+  ask n-of 53 wheat_farmers with [ home-county = 9 ] [ set first-time-farmer 1 ]
+  ask n-of 20 wheat_farmers with [ home-county = 9 ] [ set young-farmer 1 ]
+  ask n-of 7 wheat_farmers with [ home-county = 9 ] [ set not-white 1 ]
+  ask n-of 193 wheat_farmers with [ home-county = 9 ] [ set primary-income 1 ]
+
+  ;; set initial TLS score of farmers. initial score is highest for smallest farms, and then adjusted based on sociodemographic factors.
+  
+  ask wheat_farmers [
+    
+    let max-farm max-one-of wheat_farmers [ hectares-farmed-wheat ]
+    let max-farm-hectares [ hectares-farmed-wheat ] of max-farm
+    set transition-likelihood-score ( .5 - ( hectares-farmed-wheat / max-farm-hectares ) )
+    
+    if not-male = 1 [ set transition-likelihood-score ( transition-likelihood-score + .1 ) ]
+    if first-time-farmer = 1 [ set transition-likelihood-score ( transition-likelihood-score + .1 ) ]
+    if young-farmer = 1 [ set transition-likelihood-score ( transition-likelihood-score + .1 ) ]
+    if not-white = 1 [ set transition-likelihood-score ( transition-likelihood-score + .1 ) ]
+    
+    if transition-likelihood-score > 1 [ set transition-likelihood-score 1 ]
+    if transition-likelihood-score < 0 [ set transition-likelihood-score 0 ]
+    
+    set tls-initial precision transition-likelihood-score 3
+    
+    ifelse ( not-male = 0 ) and ( not-white = 0 )
+    [ if ( first-time-farmer = 1 ) and ( young-farmer = 1 ) [ set alternative-farmer 1 ] ]
+    [ if ( ( not-male + first-time-farmer + young-farmer + not-white ) > 1 ) [ set alternative-farmer 1 ] ]
+    
+  ]  
+  
+  ;; -------------------------------------------------
+ 
+  ;; set patches to the correct rotation crop/type. the use of "ceiling" here ensures that the hectares in the remainder patch are also assigned correctly.
+
+  ask two-year-farmers [
+    ask my-patches [ 
+      set patch-wheat-fallow-rotate 1 ]
+    ask n-of ceiling ( hectares-farmed-wheat / 100 ) my-patches [ 
+      set rotation "wheat" ] 
+    ask my-patches with [ rotation != "wheat" ] [  
+        set rotation "fallow"  
+    ] 
+  ] 
+  
+  ask three-year-farmers [ 
+    ask my-patches [ 
+      set patch-corn-wheat-fallow-rotate 1 ]
+    ask n-of ceiling ( hectares-farmed-wheat / 100 ) my-patches [ 
+      set rotation "wheat" ] 
+    let available-patches ( my-patches with [ rotation != "wheat" ] )
+    ask n-of ( round ( .5 * ( count available-patches ) ) ) available-patches [ 
+      set rotation "corn" ] 
+    ask my-patches with [ rotation != "corn" and rotation != "wheat" ] [ 
+      set rotation "fallow" ] 
+  ]
+
+  ;; assign initial number of patches in wheat vs rotation. 
+  ;; if the number of wheat patches is not an even multiple of 100, set one wheat patch as the remainder patch.
+  
+  ask wheat_farmers
+  [    
+    set patches-in-wheat count my-patches with [ rotation = "wheat" ]  
+    set patches-in-rotation ( count my-patches - patches-in-wheat ) 
+    if hectares-farmed-wheat != ( precision hectares-farmed-wheat -2 ) [
+      ask one-of ( my-patches with [ rotation = "wheat" ] ) [ 
+        set remainder-patch 1 
+      ]
+    ]
+  ]
+  
+end
+
+
+to setup-peach_farmers
+  
+  ;; -------------------------------------------------
+
+  ;; initialize peach producers by county
+
+  ask patches [ set farmer -1 ]
+  create-peach_farmers 26; Delta County
+  [
+    set home-county 2
+    set initialized 0
+    set id who
+    set agent-name word "Delta peach farmer " id
+  ]
+
+    ask n-of 5 peach_farmers with [initialized = 0]; set parameters for farms farming between 100 and 250 acres of potatoes per year
+     [
+      set hectares-farmed-peaches random-normal 175 25 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "small"
+     ]
+    ask n-of 11 peach_farmers with [initialized = 0]; set parameters for farms farming between 250 and 500 acres of potatoes per year
+     [
+      set hectares-farmed-peaches random-normal 375 41.67 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "medium"
+     ]
+    ask n-of 3 peach_farmers with [initialized = 0]; set parameters for farms farming between 500 and 750 acres of potatoes per year
+     [
+      set hectares-farmed-peaches random-normal 625 41.67 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "medium"
+     ]
+    ask n-of 3 peach_farmers with [initialized = 0]; set parameters for farms farming between 750 and 1000 acres of potatoes per year
+     [
+      set hectares-farmed-peaches random-normal 875 41.67 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "medium"
+     ]
+    ask n-of 4 peach_farmers with [initialized = 0]; set parameters for farms farming >1000 acres
+     [
+      set hectares-farmed-peaches random-normal 1601 100 * 0.405 ; assign acreage and convert to hectares of potatoes per year
+      set initialized 1
+      set farm-size "large"
+     ]
+
+  create-peach_farmers 41; Mesa County
+  [
+    set home-county 4
+    set initialized 0
+    set id who
+    set agent-name word "Mesa peach farmer " id
+  ]
+
+  ask n-of 21 peach_farmers with [initialized = 0]; set parameters for farms farming between 100 and 250 acres of potatoes per year
+     [
+      set hectares-farmed-peaches random-normal 175 25 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "small"
+     ]
+    ask n-of 10 peach_farmers with [initialized = 0]; set parameters for farms farming between 250 and 500 acres of potatoes per year
+     [
+      set hectares-farmed-peaches random-normal 375 41.67 * 0.405 ; assign acreage and convert to hectares
+      set hectares-farmed-total hectares-farmed-peaches
+      set initialized 1
+      set farm-size "medium"
+     ]
+    ask n-of 4 peach_farmers with [initialized = 0]; set parameters for farms farming between 500 and 750 acres of potatoes per year
+     [
+      set hectares-farmed-peaches random-normal 625 41.67 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "medium"
+     ]
+    ask n-of 3 peach_farmers with [initialized = 0]; set parameters for farms farming between 750 and 1000 acres of potatoes per year
+     [
+      set hectares-farmed-peaches random-normal 875 41.67 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "medium"
+     ]
+    ask n-of 3 peach_farmers with [initialized = 0]; set parameters for farms farming >1000 acres of potatoes per year
+     [
+      set hectares-farmed-peaches random-normal 1561 100 * 0.405 ; assign acreage and convert to hectares
+      set initialized 1
+      set farm-size "large"
+     ]
+
+  ;; set largest farmer to be the farm that is packing for others
+  ;; set smallest 50% of farms in the medium size range to become split-packers (both self pack and outsource packing)
+
+  ask max-one-of peach_farmers [hectares-farmed-peaches] [ set outsource-packer 1 ]
+  set packer peach_farmers with [ outsource-packer = 1 ]
+
+  let medium-farmers ( peach_farmers with [ farm-size = "medium" ] )
+  let half-mediums round ( ( count medium-farmers ) / 2 )
+  let split-packers min-n-of half-mediums medium-farmers [ hectares-farmed-peaches ]
+  ask split-packers [ set split-pack 1 ]
+
+
+  ;; -------------------------------------------------
+
+  ;; set general peach producer variables
+  set number-peach_farmers (count peach_farmers)
+  let peach-patches patches with [county-peach = 1]
+  
+  ask peach_farmers
+  [
+    set assets 0 ; probably need to make this starting amount more realistic
+    set assets-initial assets
+    set loyalty-to-buyer-id 0
+    
+    ifelse outsource-packer = 1 [    
+      set peaches-conventional_inventory-maximum 450000000
+      set peaches-conventional_price-to-sell-wholesale precision ( random-normal peach-conventional_price-farmgate-wholesale-avg peach-conventional_price-farmgate-wholesale-stdev )  3  ; do we need to update this price variable every season?
+      set peaches-organic_inventory-maximum 450000000
+      set peaches-organic_price-to-sell-wholesale precision (random-normal peach-organic_price-farmgate-wholesale-avg peach-organic_price-farmgate-wholesale-stdev)  3  ; do we need to update this price variable every season?
+      set peaches-seconds_inventory-maximum 450000000
+      set peaches-seconds_price-to-sell-wholesale precision ( random-normal peach-seconds_price-farmgate-wholesale-avg peach-seconds_price-farmgate-wholesale-stdev )  3  ; do we need to update this price variable every season?
+      ]
+      [
+      set peaches-conventional_inventory-maximum 450000000
+      set peaches-organic_inventory-maximum 450000000
+      set peaches-seconds_inventory-maximum 450000000
+      set peaches-conventional_price-to-sell-wholesale precision ( random-normal peach-conventional_price-farmgate-wholesale-avg peach-conventional_price-farmgate-wholesale-stdev )  3  ; do we need to update this price variable every season?
+      set peaches-organic_price-to-sell-wholesale precision (random-normal peach-organic_price-farmgate-wholesale-avg peach-organic_price-farmgate-wholesale-stdev)  3  ; do we need to update this price variable every season?
+      set peaches-seconds_price-to-sell-wholesale precision ( random-normal peach-seconds_price-farmgate-wholesale-avg peach-seconds_price-farmgate-wholesale-stdev )  3  ; do we need to update this price variable every season?
+      set peach-conventional_price-farmgate-altmark-avg precision ( random-normal peach-conventional_price-farmgate-altmark-avg peach-conventional_price-farmgate-altmark-stdev )  3  ; do we need to update this price variable every season?
+      set peach-organic_price-farmgate-altmark-avg precision (random-normal peach-organic_price-farmgate-wholesale-avg peach-organic_price-farmgate-altmark-stdev)  3  ; do we need to update this price variable every season?
+;      set peaches-seconds_price-to-sell-altmarks precision ( random-normal peach-seconds_price-farmgate-altmark-avg peach-seconds_price-farmgate-altmark-stdev )  3  ; do we need to update this price variable every season?  
+      ]
+    
+    set hectares-farmed-peaches round hectares-farmed-peaches
+    set hectares-farmed-total hectares-farmed-peaches
+    set farm-id who
+    set color green
+    set shape "circle"
+    set size 0.5
+    
+    set patches-occupied round (hectares-farmed-total / 100 - 0.5) + 1                                        ; results in number of patches owned equal to rounded up to next highest hundred hectares / 100
+    let available-patches peach-patches with [occupied = 0] 
+    move-to one-of available-patches                             ; with [wheat-yes-no = 1]
+    ask patch-here [
+      set occupied 1
+      set farmer [farm-id] of myself
+      set pcolor farmer ]
+    set my-patches ( patches with [farmer = [farm-id] of myself] )
+    while [ ( count my-patches) < patches-occupied ] [
+    ask one-of my-patches [
+        let my-neighbors neighbors with [occupied = 0]
+        ifelse any? my-neighbors [
+          ask one-of my-neighbors [
+            set occupied 1
+            set farmer [ farmer ] of myself
+            set pcolor farmer ] ]
+        [ let empty-patches peach-patches with [ occupied = 0 ]
+          ask min-one-of empty-patches [distance myself] [
+            set occupied 1
+            set farmer [ farmer ] of myself
+            set pcolor farmer ] ]
+      ]
+    set my-patches ( peach-patches with [farmer = [farm-id] of myself] )
+    ]
+  ]
+ 
+  ;; -------------------------------------------------
+
+  ;; set peach producer demographics
+
+  ;; delta county
+  let delta-farmers peach_farmers with [ home-county = 1 ]
+  let farmer-number count delta-farmers
+  ask n-of ( round ( farmer-number * .5656 ) ) delta-farmers [ set male-gender 1 ]
+  ask n-of ( round ( farmer-number * .3368 ) ) delta-farmers [ set first-time-farmer 1 ]
+  ask n-of ( round ( farmer-number * .0818 ) ) delta-farmers [ set young-farmer 1 ]
+  ask n-of ( round ( farmer-number * .0224 ) ) delta-farmers [ set not-white 1 ]
+
+  ;; mesa county
+  let mesa-farmers peach_farmers with [ home-county = 2 ]
+  set farmer-number count mesa-farmers
+  ask n-of ( round ( farmer-number * .5578 ) ) mesa-farmers [ set male-gender 1 ]
+  ask n-of ( round ( farmer-number * .3335 ) ) mesa-farmers [ set first-time-farmer 1 ]
+  ask n-of ( round ( farmer-number * .0745 ) ) mesa-farmers [ set young-farmer 1 ]
+  ask n-of ( round ( farmer-number * .0190 ) ) mesa-farmers [ set not-white 1 ]
+
+
+  ;; -------------------------------------------------
+
+  ask peach_farmers [
+    let max-farm max-one-of peach_farmers [ hectares-farmed-peaches ]
+    let max-farm-hectares [ hectares-farmed-peaches ] of max-farm
+    set transition-likelihood-score ( .5 - (hectares-farmed-peaches / max-farm-hectares ))
+    if male-gender = 0 [
+      set transition-likelihood-score ( transition-likelihood-score * 1.1 ) ]
+    if first-time-farmer = 1 [
+      set transition-likelihood-score ( transition-likelihood-score * 1.1 ) ]
+    if young-farmer = 1 [
+      set transition-likelihood-score ( transition-likelihood-score * 1.1 ) ]
+    if not-white = 1 [
+      set transition-likelihood-score ( transition-likelihood-score * 1.1 ) ]
+    if transition-likelihood-score > 1 [ set transition-likelihood-score 1 ]
+    if transition-likelihood-score < 0 [ set transition-likelihood-score 0 ]
+    set tls-initial transition-likelihood-score
+    
+    ifelse ( male-gender = 1 ) and ( not-white = 0 ) [
+        if (( male-gender + first-time-farmer + young-farmer + not-white ) / 4 ) > .25
+          [ set alternative-farmer 1 ] ] [
+        if (( male-gender + first-time-farmer + young-farmer + not-white ) / 4 ) > .0
+          [ set alternative-farmer 1 ] ] ]
+
+  ;; -------------------------------------------------
+
+  ; initialize crop rotations - can drop this since there are no crop rotations with peaches
+
+  ask peach_farmers
+  [
+    set patches-in-peaches round (hectares-farmed-peaches / 100 + 0.5) ;; leaving this line in case it does anything functional, but removed the rest of this section
+  ]
+  
+end
+
+
+to setup-beef_ranchers
+  
+  create-beef_ranchers 92; Moffat County Diversified cow-calf, Category 3
+  [
+    set shape "house"
+    set size 1
+    set category 3
+    set farm-id who + 1
+    set color farm-id
+    set home-county 5
+    set cows-that-calved round random-normal 200 75
+    if cows-that-calved < 50 [set cows-that-calved random 500 + 500]; prevents less than 50 and creates a small percentage of high-cow operations, increasing tail
+    if cows-that-calved > 1000 [set cows-that-calved 1000]
+    if hide-turtles? = TRUE [ ht ]
+   ]
+  
+  create-beef_ranchers 81; Routt County Diversified cow-calf, Category 3
+  [
+    set shape "house"
+    set size 1
+    set category 3
+    set farm-id who + 1
+    set color farm-id
+    set home-county 7
+    set cows-that-calved round random-normal 160 55
+    if cows-that-calved < 50 [set cows-that-calved random 500 + 400]; prevents less than 50 and creates a small percentage of high-cow operations, increasing tail, largest operations smaller in Routt
+    if cows-that-calved > 1000 [set cows-that-calved 1000]
+    if hide-turtles? = TRUE [ ht ]
+   ]
+  
+  create-beef_ranchers 37; Moffat County Small-scale Cow-Calf, Category 1
+  [
+    set shape "house"
+    set size 1
+    set category 1
+    set farm-id who + 1
+    set color farm-id
+    set home-county 5
+    set cows-that-calved round random-normal 26.8 13
+    if cows-that-calved < 10 [set cows-that-calved 10]
+    if cows-that-calved > 49 [set cows-that-calved 49]
+    if hide-turtles? = TRUE [ ht ]
+   ]
+  
+  create-beef_ranchers 72; Routt County Small-scale Cow-Calf, Category 1
+  [
+    set shape "house"
+    set size 1
+    set category 1
+    set farm-id who + 1
+    set color farm-id
+    set home-county 7
+    set cows-that-calved round random-normal 25.1 13
+    if cows-that-calved < 10 [set cows-that-calved 10]
+    if cows-that-calved > 49 [set cows-that-calved 49]
+    if hide-turtles? = TRUE [ ht ]
+   ]
+  
+  ask beef_ranchers with [category = 1]
+    [
+      if cows-that-calved > 24
+        [
+         set owns-irrigated random 2 ; if small cow-calf with 25 or more cows, has a 50% chance of owning some irrigated land, otherwise does not
+        ]
+      set input-grazing-ratio precision random-normal 0.75 0.025 3; sets portion of annual feed budget covered by grazing
+      set input-grazing-ratio-private 1  ; determines how much of annual feed budget is satisfied on their own grazing land, much more from private for operations of this scale
+      set input-grazing-ratio-public 0 ; sets portion of annual feed budget satisfied on leased grazing land
+      set input-hay-ratio 1 - input-grazing-ratio ; sets portion of annual feed budget covered by hay
+      set total-cows round (cows-that-calved * 1.11) ; USDA NASS data are cows that calved but need to adjust for 90% calving ratio
+      set total-cows-baseline total-cows
+      if hide-turtles? = TRUE [ ht ]
+      ifelse random 2 = 1 [set male-gender 1] [set male-gender 0] ; 50-50 split among smaller ranchers
+      ifelse random 10 = 10 [set first-time-farmer 1] [set first-time-farmer 0]; 10% chance of being first-generation ranching (regardless of age and tenure)
+      ifelse random 5 = 5 [set young-farmer 1] [set young-farmer 0]; 1/6 chance of being <44 years old
+      ifelse random 41 = 40 [set not-white 1] [set not-white 0]; 1/40 chance of being non-white
+    ]
+
+ ask beef_ranchers with [category = 3]
+    [
+      set owns-irrigated 1 ; all Diversified cow-calf producers own irrigated land
+      set leases-grazing 1 ; all Diversified cow-calf producers lease grazing land
+      set input-grazing-ratio precision random-normal 0.70 0.025 3; sets portion of annual feed budget covered by grazing
+      set input-grazing-ratio-private precision (input-grazing-ratio * random-normal 0.33 0.03) 3 ; determines how much of annual feed budget is satisfied on their own grazing land
+      set input-grazing-ratio-public precision (input-grazing-ratio - input-grazing-ratio-private) 3 ; sets portion of annual feed budget satisfied on leased grazing land
+      set input-hay-ratio precision (1 - input-grazing-ratio) 3 ; sets portion of annual feed budget covered by hay
+      set total-cows round (cows-that-calved * 1.11) ; USDA NASS data are cows that calved but need to adjust for 90% calving ratio
+      set total-cows-baseline total-cows
+      if hide-turtles? = TRUE [ ht ]
+      ifelse random 3 = 2 [set male-gender 0] [set male-gender 1] ; 66-33 split among larger ranchers 
+      ifelse random 10 = 10 [set first-time-farmer 1] [set first-time-farmer 0]; 10% chance of being first-generation ranching (regardless of age and tenure)
+      ifelse random 5 = 5 [set young-farmer 1] [set young-farmer 0]; 1/6 chance of being <44 years old
+      ifelse random 41 = 40 [set not-white 1] [set not-white 0]; 1/40 chance of being non-white
+    ]
+  
+  ask beef_ranchers [ 
+    set forage-need cows-that-calved * 365 * 12.5
+    set color farm-id
+    set assets 0
+    set assets-initial assets
+  ] 
+  
+end
+
+
+to locate-beef_ranchers ; locate private ranchland (essentially settling and purchasing) 
+
+  let beef-patches patches with [county-beef = 1]
+  let private-beef-patches beef-patches with [private-public = 0]
+  let productive-private-beef-patches private-beef-patches with [mean-forage-production > 0] 
+  let non-irrigated-productive-private-beef-patches productive-private-beef-patches with [irrigated = 0] 
+  let grazable-non-irrigated-productive-private-beef-patches non-irrigated-productive-private-beef-patches with [grazable = 2] 
+  
+  ask beef_ranchers 
+    [move-to one-of productive-private-beef-patches with [county-id = [home-county] of myself]]; for now doesn't matter if two ranchers accidentally choose the same patch -- will "settle" in next step
+  
+  ask beef_ranchers with [category = 3] ; these get first choice
+   [
+      ;starting point for land they will own 
+     move-to min-one-of non-irrigated-productive-private-beef-patches with [sum [occupied] of patches in-radius 1 = 0] [distance myself]
+      ;calculate amount of land needed based on "neighborhood"
+     set non-irrig-owned round (input-grazing-ratio-private * forage-need / mean-forage-production); set amount grazing land owned by available forage production
+       ;actually buy land 
+     let available-patches grazable-non-irrigated-productive-private-beef-patches with [occupied = 0] 
+     ask min-n-of non-irrig-owned available-patches [distance myself]
+      [
+        set occupied 1
+        set farmer [farm-id] of myself
+        set pcolor [farm-id] of myself
+      ]
+      set my-patches ( beef-patches with [farmer = [farm-id] of myself] )  
+  ]
+  
+  ask beef_ranchers with [category = 1]
+   [
+;   ifelse owns-irrigated = 1 ;commented out old ifelse version to streamline (leaving in case want to change back later)
+;      [
+        move-to min-one-of non-irrigated-productive-private-beef-patches with [sum [occupied] of patches in-radius 1 = 0] [distance myself]
+        set non-irrig-owned round (input-grazing-ratio-private * forage-need / mean-forage-production); set amount grazing land owned by available forage production
+        let available-patches grazable-non-irrigated-productive-private-beef-patches with [occupied = 0]
+        ask min-n-of non-irrig-owned available-patches [distance myself]
+           [
+             set occupied 1
+             set farmer [farm-id] of myself
+             set pcolor [farm-id] of myself
+           ]
+        set my-patches ( beef-patches with [farmer = [farm-id] of myself] )
+  ]
+     
+ ask beef_ranchers
+   [
+    move-to one-of my-patches  
+    set total-ha-grazed non-irrig-owned * 100 * input-grazing-ratio / input-grazing-ratio-private
+    set stocking-rate total-ha-grazed / cows-that-calved;hectares per cow
+    set ranch-average-precip (mean [average-precip] of my-patches)
+    set distance-to-craig distancexy 150 400
+  ] 
+  
+   ;Transition likelihood score setup
+  ask beef_ranchers [
+    ifelse category = 3 and total-cows-baseline < 201; diverse-cow-calf operations with 200 cows or fewer will automatically qualify. Other ranches will need additional factors.
+       [set transition-likelihood-score 0.5]
+       [set transition-likelihood-score 0.4]
+    if male-gender = 0 [set transition-likelihood-score transition-likelihood-score + 0.05]
+    if first-time-farmer = 1 [set transition-likelihood-score transition-likelihood-score + 0.05]
+    if young-farmer = 1 [set transition-likelihood-score transition-likelihood-score + 0.05]
+    if not-white = 1 [set transition-likelihood-score transition-likelihood-score + 0.05]
+    if distance-to-craig < 25 [set transition-likelihood-score transition-likelihood-score + 0.5]; <25km gains points
+    if distance-to-craig > 75 [set transition-likelihood-score transition-likelihood-score - 0.5]; >75km loses points
+    if distance-to-craig < 25 and random 10 = 1 [set transition-likelihood-score transition-likelihood-score + 0.5]; random ranchers close to Craig have social/business ties to slaughterhouse
+    if transition-likelihood-score < 0 [set transition-likelihood-score 0]
+    if transition-likelihood-score > 1 [set transition-likelihood-score 1]
+    
+    ; could add update TLS procedure: if ranchers within x distance of me has high TLS then increase score (would be cool to track success of neighbors as well as participation)
+    set tls-initial transition-likelihood-score
+   ]
+  
+end
+
+; deleted setup-forage-production, fix-stocking, setup-risk-behavior, and ranch-stats from here 
+; ranch-stats moved to beefDashboard, setup-risk-behavior became tls setup, and kevin eliminated forage and stocking for simplicity
+
+
+to setup-certified-organic ;update for wheat and peaches once we have DSSAT inputs
+  
+  ;; potatoes
+  let occupied-potato-patches patches with [potato-yes-no = 1 and occupied = 1]
+  ask n-of (0.007 * round count occupied-potato-patches) occupied-potato-patches; use rough percentage of SLV potato crop that's organic based on CPAC reports
+  [set certified-organic 1]
+  ask potato_farmers
+  [
+  ifelse sum [certified-organic] of my-patches > 0 ; set turtle variable to identify whether potato-farm has any cert. organic land
+  [set grows-organic 1]
+  [set grows-organic 0]
+  ]
+  
+  ;; wheat
+  
+  ;; assign the appropriate proportion of occupied wheat patches to organic production.
+  ;; then, make sure that farmers with land in organic production when the model starts have a TLS score over the organic conversion threshold.
+  
+  let occupied-wheat-patches patches with [ ( county-wheat = 1 ) and ( occupied = 1 ) ]
+  ask n-of ( round ( 0.07 * count occupied-wheat-patches ) ) occupied-wheat-patches [ set certified-organic 1 ]
+  
+  ask wheat_farmers [
+    ifelse any? my-patches with [ certified-organic = 1 ]
+      [ set grows-organic 1 
+        if transition-likelihood-score < .5 [ set transition-likelihood-score ( .5 + random-float .5 ) ] 
+      ]
+      [ set grows-organic 0 ]
+  ]
+   
+  ;; peaches
+  
+;  ask n-of (0.007 * round count patches with [occupied = 1]) patches with [occupied = 1]; updated based on erin math
+;  [set certified-organic 1]
+;  ask peach_farmers
+;  [
+;  ifelse sum [certified-organic] of patches with [farmer = [farm-id] of myself] > 0 ; set turtle variable to identify whether peach-farm has any cert. organic land
+;  [set grows-organic 1]
+;  [set grows-organic 0]
+;  ]
+  
+end
+
+
+to setup-potato-farm-crop-allocation
+  
+  ask potato_farmers
+  [
+    set russet-canela-allocation 0.8
+    set purple-allocation 0.2
+  ]
+  
+end
+
+
+to setup-wheat-farm-crop-allocation
+  
+  ask wheat_farmers
+  [
+    set hrw-allocation 0.95
+    set snowmass-allocation 0.05
+  ]
+  
+end
+
+
+to setup-display
+  
+  if display-style = "farm ownership" [
+    ask patches with [ occupied = 1 ]
+      [ set pcolor farmer ]
+  ]
+
+  if display-style = "crop rotation" [
+    ask patches with [ rotation = "barley" ] [ set pcolor 125 ]
+    ask patches with [ rotation = "potato" ] [ set pcolor 34 ]
+    ask patches with [ rotation = "wheat" ] [ set pcolor 54 ]       ; green
+    ask patches with [ rotation = "corn" ] [ set pcolor 44 ]        ; yellow
+    ask patches with [ rotation = "fallow" ] [ set pcolor 34 ]      ; brown
+  ]
+
+  if display-style = "organic vs conventional" [
+    ask patches with [ occupied = 1 ]
+    [
+      if certified-organic = 0 [ set pcolor 36 ]
+      if in-organic-transition = 1 [ set pcolor 56 ]
+      if certified-organic = 1 [ set pcolor 62 ]
+    ]
+  ]
+
+  if display-style = "farm size/ideology" [
+    ask potato_farmers [
+      if ( farm-size = "small" and alternative-farmer = 0 )  [ ask my-patches [set pcolor 63 ] ]
+      if ( farm-size = "small" and alternative-farmer = 1 ) [ ask my-patches [set pcolor 67 ] ]
+      if ( farm-size = "medium" and alternative-farmer = 0 ) [ ask my-patches [set pcolor 94 ] ]
+      if ( farm-size = "medium" and alternative-farmer = 1 ) [ ask my-patches [set pcolor 97 ] ]
+      if ( farm-size = "large" and alternative-farmer = 0 ) [ ask my-patches [set pcolor 14 ] ]
+      if ( farm-size = "large" and alternative-farmer = 1 ) [ ask my-patches [set pcolor 17 ] ]
+    ]
+    ask wheat_farmers [
+      if ( farm-size = "small" and alternative-farmer = 0 )  [ ask my-patches [set pcolor 63 ] ]
+      if ( farm-size = "small" and alternative-farmer = 1 ) [ ask my-patches [set pcolor 67 ] ]
+      if ( farm-size = "medium" and alternative-farmer = 0 ) [ ask my-patches [set pcolor 94 ] ]
+      if ( farm-size = "medium" and alternative-farmer = 1 ) [ ask my-patches [set pcolor 97 ] ]
+      if ( farm-size = "large" and alternative-farmer = 0 ) [ ask my-patches [set pcolor 14 ] ]
+      if ( farm-size = "large" and alternative-farmer = 1 ) [ ask my-patches [set pcolor 17 ] ]
+    ]
+  ]
+  
+  if display-style = "transition likelihood score" [
+    ask wheat_farmers [ 
+      if ( transition-likelihood-score <  1 ) [ ask my-patches [set pcolor 61 ] ] 
+      if ( transition-likelihood-score < .9 ) [ ask my-patches [set pcolor 62 ] ] 
+      if ( transition-likelihood-score < .8 ) [ ask my-patches [set pcolor 63 ] ]  
+      if ( transition-likelihood-score < .7 ) [ ask my-patches [set pcolor 65 ] ]
+      if ( transition-likelihood-score < .6 ) [ ask my-patches [set pcolor 67 ] ]
+      if ( transition-likelihood-score < .5 ) [ ask my-patches [set pcolor 17 ] ]
+      if ( transition-likelihood-score < .4 ) [ ask my-patches [set pcolor 16 ] ]
+      if ( transition-likelihood-score < .3 ) [ ask my-patches [set pcolor 15 ] ]
+      if ( transition-likelihood-score < .2 ) [ ask my-patches [set pcolor 14 ] ]
+      if ( transition-likelihood-score < .1 ) [ ask my-patches [set pcolor 13 ] ]
+    ]
+  ]
+
+end
+
+
+to setup-potato-agents
+  
+  setup-potato_repackers
+  setup-potato_shippers
+  setup-potato_processors   
+  
+end
+
+
+to setup-potato_repackers
+
+  create-potato_repackers number-potato_repackers
+  [
+    set heading 0
+    setxy random max-pxcor random max-pycor
+    set shape "house"
+    set size 2
+    set color pink
+    set id who
+    set agent-name word "repacker " who
+    set assets 0
+    set assets-initial assets
+
+    set potatoes-russet-conventional-fresh_inventory-maximum 1000000000000
+    set potatoes-russet-organic-fresh_inventory-maximum 1000000000000
+    set potatoes-purple-conventional-fresh_inventory-maximum 1000000000000
+    set potatoes-purple-organic-fresh_inventory-maximum 1000000000000
+    set potatoes-russet-conventional-fresh-small_inventory-maximum 1000000000000
+
+    ;; conventional input price is $2340/acre (see info tab for details)
+    set potatoes-russet-conventional-fresh_price-to-buy precision ( random-normal potato-conventional-russet_price-repacker-pays-avg potato-conventional-russet_price-repacker-pays-stdev ) 2
+    if potatoes-russet-conventional-fresh_price-to-buy < potato-conventional-russet_price-farmer-breakeven [ set potatoes-russet-conventional-fresh_price-to-buy potato-conventional-russet_price-farmer-breakeven ]
+
+    set potatoes-russet-organic-fresh_price-to-buy precision ( random-normal potato-organic-russet_price-repacker-pays-avg potato-organic-russet_price-repacker-pays-stdev ) 2
+    if potatoes-russet-organic-fresh_price-to-buy < potato-organic-russet_price-farmer-breakeven [ set potatoes-russet-organic-fresh_price-to-buy potato-organic-russet_price-farmer-breakeven ]
+
+    set potatoes-purple-conventional-fresh_price-to-buy precision ( random-normal potato-conventional-purple_price-repacker-pays-avg potato-conventional-purple_price-repacker-pays-stdev ) 2
+    if potatoes-purple-conventional-fresh_price-to-buy < potato-conventional-purple_price-farmer-breakeven [ set potatoes-purple-conventional-fresh_price-to-buy potato-conventional-purple_price-farmer-breakeven ]
+
+    set potatoes-purple-organic-fresh_price-to-buy precision ( random-normal potato-organic-purple_price-repacker-pays-avg potato-organic-purple_price-repacker-pays-stdev ) 2
+    if potatoes-purple-organic-fresh_price-to-buy < potato-organic-purple_price-farmer-breakeven [ set potatoes-purple-organic-fresh_price-to-buy potato-organic-purple_price-farmer-breakeven ]
+
+    set potatoes-russet-conventional-fresh-small_price-to-buy precision ( random-normal potato-conventional-russet-small_price-repacker-pays-avg potato-conventional-russet-small_price-repacker-pays-stdev ) 2
+    ;if potatoes-russet-conventional-fresh-small_price-to-buy < conv-input-price-per-lb [ set potatoes-russet-conventional-fresh-small_price-to-buy conv-input-price-per-lb ]
+
+    if debug-mode = TRUE [
+      print "repacker conventional russet price to buy"
+      print potatoes-russet-conventional-fresh_price-to-buy ]
+
+    if hide-turtles? = TRUE [ ht ]
+    ]
+  
+end
+
+
+to setup-potato_shippers
+ 
+  create-potato_shippers number-potato_shippers
+  [
+    set heading 0
+    setxy random max-pxcor random max-pycor
+    set shape "house"
+    set size 2
+    set color blue
+    set id who
+    set agent-name word "shipper " id
+    set assets 0
+    set assets-initial assets
+    set short-supply-chain-interactions 0
+
+    set potatoes-russet-conventional-fresh_inventory-maximum random-normal 20000000 3000000
+    set potatoes-russet-organic-fresh_inventory-maximum random-normal 20000000 3000000
+    set potatoes-purple-conventional-fresh_inventory-maximum random-normal 20000000 3000000
+    set potatoes-purple-organic-fresh_inventory-maximum random-normal 20000000 3000000
+    set potatoes-russet-conventional-fresh-small_inventory-maximum random-normal 20000000 3000000
+
+    set potatoes-russet-conventional-fresh_price-to-buy precision ( random-normal potato-conventional-russet_price-farmgate-avg potato-conventional-russet_price-farmgate-stdev ) 2
+    if potatoes-russet-conventional-fresh_price-to-buy < potato-conventional-russet_price-farmer-breakeven [ set potatoes-russet-conventional-fresh_price-to-buy potato-conventional-russet_price-farmer-breakeven ]
+
+    set potatoes-russet-organic-fresh_price-to-buy precision ( random-normal potato-organic-russet_price-farmgate-avg potato-organic-russet_price-farmgate-stdev ) 2
+    if potatoes-russet-organic-fresh_price-to-buy < potato-organic-russet_price-farmer-breakeven [ set potatoes-russet-organic-fresh_price-to-buy potato-organic-russet_price-farmer-breakeven ]
+
+    set potatoes-purple-conventional-fresh_price-to-buy precision ( random-normal potato-conventional-purple_price-farmgate-avg potato-conventional-purple_price-farmgate-stdev ) 2
+    if potatoes-purple-conventional-fresh_price-to-buy < potato-conventional-purple_price-farmer-breakeven [ set potatoes-purple-conventional-fresh_price-to-buy potato-conventional-purple_price-farmer-breakeven ]
+
+    set potatoes-purple-organic-fresh_price-to-buy precision ( random-normal potato-organic-purple_price-farmgate-avg potato-organic-purple_price-farmgate-stdev ) 2
+    if potatoes-purple-organic-fresh_price-to-buy < potato-organic-purple_price-farmer-breakeven [ set potatoes-purple-organic-fresh_price-to-buy potato-organic-purple_price-farmer-breakeven ]
+
+    set potatoes-russet-conventional-fresh-small_price-to-buy precision ( random-normal potato-conventional-russet-small_price-shipper-receives-avg potato-conventional-russet-small_price-shipper-receives-stdev ) 2
+    ;if potatoes-russet-conventional-fresh-small_price-to-buy < conv-input-price-per-lb [ set potatoes-russet-conventional-fresh-small_price-to-buy conv-input-price-per-lb ]
+    ; small potatoes will likely be less than input costs
+
+    if debug-mode = TRUE [
+      print "shipper conventional russet price to buy"
+      print potatoes-russet-conventional-fresh_price-to-buy ]
+
+    if hide-turtles? = TRUE [ ht ]
+    ]
+  
+end
+
+
+to setup-potato_processors
+  
+  create-potato_processors number-potato_processors
+  [
+    set heading 0
+    setxy random max-pxcor random max-pycor
+    set shape "house"
+    set size 2
+    set color orange
+    set id who
+    set agent-name word "processor " id
+    set assets 0
+    set assets-initial assets
+
+    set potatoes-russet-conventional-fresh_inventory-maximum 200000000
+    set potatoes-russet-conventional-processed_inventory-maximum 200000000
+    set potatoes-russet-organic-fresh_inventory-maximum 200000000
+    set potatoes-russet-organic-processed_inventory-maximum 200000000
+    set potatoes-russet-conventional-fresh-small_inventory-maximum 200000000
+    set potatoes-purple-conventional-fresh_inventory-maximum 200000000
+    set potatoes-purple-conventional-processed_inventory-maximum 200000000
+    set potatoes-purple-organic-fresh_inventory-maximum 200000000
+    set potatoes-purple-organic-processed_inventory-maximum 200000000
+
+
+    set potatoes-russet-conventional-fresh_price-to-buy precision ( random-normal potato-conventional-russet_price-shipper-receives-avg potato-conventional-russet_price-shipper-receives-stdev ) 2
+    if potatoes-russet-conventional-fresh_price-to-buy < potato-conventional-russet_price-farmgate-avg [ set potatoes-russet-conventional-fresh_price-to-buy potato-conventional-russet_price-farmgate-avg ]
+
+    set potatoes-russet-organic-fresh_price-to-buy precision ( random-normal potato-organic-russet_price-shipper-receives-avg potato-organic-russet_price-shipper-receives-stdev ) 2
+    if potatoes-russet-organic-fresh_price-to-buy < potato-organic-russet_price-farmgate-avg [ set potatoes-russet-organic-fresh_price-to-buy potato-organic-russet_price-farmgate-avg ]
+
+    set potatoes-purple-conventional-fresh_price-to-buy precision ( random-normal potato-conventional-purple_price-shipper-receives-avg potato-conventional-purple_price-shipper-receives-stdev ) 2
+    if potatoes-purple-conventional-fresh_price-to-buy < potato-conventional-purple_price-farmgate-avg [ set potatoes-purple-conventional-fresh_price-to-buy potato-conventional-purple_price-farmgate-avg ]
+
+    set potatoes-purple-organic-fresh_price-to-buy precision ( random-normal potato-organic-purple_price-shipper-receives-avg potato-organic-purple_price-shipper-receives-stdev ) 2
+    if potatoes-purple-organic-fresh_price-to-buy < potato-organic-purple_price-farmgate-avg [ set potatoes-purple-organic-fresh_price-to-buy potato-organic-purple_price-farmgate-avg ]
+
+
+    if debug-mode = TRUE [
+     print "processor conventional russet fresh price to buy"
+     print potatoes-russet-conventional-fresh_price-to-buy ]
+
+    if hide-turtles? = TRUE [ ht ]
+  ]
+  
+  end
+
+to setup-wheat-agents
+  
+  setup-wheat_elevators
+  setup-wheat_mills
+  setup-wheat_bakers
+  
+end
+
+
+to setup-wheat_elevators
+
+  create-wheat_elevators number-wheat_elevators [
+    set heading 0
+    set shape "house"
+    set size 2
+    set color pink
+    set id who
+    set agent-name word "elevator " who
+    set assets 0
+    set assets-initial assets
+
+    set wheat-hrw-conventional_inventory-maximum 1000000000000
+    set wheat-hrw-organic_inventory-maximum 1000000000000
+    set wheat-snowmass-conventional_inventory-maximum 1000000000000
+
+
+    set wheat-hrw-conventional_price-to-buy precision ( random-normal wheat-hrw-conventional_price-farmgate-avg wheat-hrw-conventional_price-farmgate-stdev ) 2
+    if wheat-hrw-conventional_price-to-buy < wheat-hrw-conventional_price-farmer-breakeven [ set wheat-hrw-conventional_price-to-buy wheat-hrw-conventional_price-farmer-breakeven ]
+    
+    set wheat-hrw-organic_price-to-buy precision ( random-normal wheat-hrw-organic_price-farmgate-avg wheat-hrw-organic_price-farmgate-stdev ) 2
+    if wheat-hrw-organic_price-to-buy < wheat-hrw-conventional_price-farmer-breakeven [ set wheat-hrw-organic_price-to-buy wheat-hrw-organic_price-farmer-breakeven ]
+    
+    set wheat-snowmass-conventional_price-to-buy precision ( random-normal wheat-snowmass-conventional_price-farmgate-avg wheat-snowmass-conventional_price-farmgate-stdev ) 2
+    if wheat-snowmass-conventional_price-to-buy < wheat-snowmass-conventional_price-farmer-breakeven [ set wheat-snowmass-conventional_price-to-buy wheat-snowmass-conventional_price-farmer-breakeven ]
+
+    if hide-turtles? = TRUE [ ht ]
+  ]
+
+end
+
+
+to setup-wheat_mills
+
+  create-wheat_mills number-wheat_mills [
+    set heading 0
+    set shape "house"
+    set size 2
+    set color blue
+    set id who
+    set agent-name word "mill " id
+    set assets 0
+    set assets-initial assets
+    
+    set wheat-hrw-conventional_inventory-maximum 200000000
+    set wheat-hrw-conventional-flour_inventory-maximum 200000000
+    set wheat-hrw-organic_inventory-maximum 200000000
+    set wheat-hrw-organic-flour_inventory-maximum 200000000
+    set wheat-snowmass-conventional_inventory-maximum 200000000
+    set wheat-snowmass-conventional-flour_inventory-maximum 200000000
+
+
+    set wheat-hrw-conventional_price-to-buy precision ( random-normal wheat-hrw-conventional_price-elevator-receives-avg wheat-hrw-conventional_price-elevator-receives-stdev ) 2
+    if wheat-hrw-conventional_price-to-buy < wheat-hrw-conventional_price-farmgate-avg [ set wheat-hrw-conventional_price-to-buy wheat-hrw-conventional_price-farmgate-avg ]
+
+    set wheat-hrw-organic_price-to-buy precision ( random-normal wheat-hrw-organic_price-elevator-receives-avg wheat-hrw-organic_price-elevator-receives-stdev ) 2
+    if wheat-hrw-organic_price-to-buy < wheat-hrw-organic_price-farmgate-avg [ set wheat-hrw-organic_price-to-buy wheat-hrw-organic_price-farmgate-avg ]
+    
+    set wheat-snowmass-conventional_price-to-buy precision ( random-normal wheat-snowmass-conventional_price-elevator-receives-avg wheat-snowmass-conventional_price-elevator-receives-stdev ) 2
+    if wheat-snowmass-conventional_price-to-buy < wheat-snowmass-conventional_price-farmgate-avg [ set wheat-snowmass-conventional_price-to-buy wheat-snowmass-conventional_price-farmgate-avg ]
+
+    if hide-turtles? = TRUE [ ht ]
+  ]
+
+end
+
+
+to setup-wheat_bakers
+
+  create-wheat_bakers number-wheat_bakers [
+    set heading 0
+    set shape "house"
+    set size 2
+    set color orange
+    set id who
+    set agent-name word "baker " id
+    set assets 0
+    set assets-initial assets
+
+    set wheat-hrw-conventional-flour_inventory-maximum 200000000
+    set wheat-hrw-conventional-bread_inventory-maximum 200000000
+    set wheat-hrw-organic-flour_inventory-maximum 200000000
+    set wheat-hrw-organic-bread_inventory-maximum 200000000
+    set wheat-snowmass-conventional-flour_inventory-maximum 200000000
+    set wheat-snowmass-conventional-bread_inventory-maximum 200000000
+
+    set wheat-hrw-conventional-flour_price-to-buy precision (random-normal wheat-hrw-conventional-flour_price-mill-receives-avg wheat-hrw-conventional-flour_price-mill-receives-stdev) 2
+    if wheat-hrw-conventional-flour_price-to-buy < wheat-hrw-conventional_price-elevator-receives-avg [ set wheat-hrw-conventional-flour_price-to-buy wheat-hrw-conventional_price-elevator-receives-avg ]
+
+    set wheat-hrw-organic-flour_price-to-buy precision (random-normal wheat-hrw-organic-flour_price-mill-receives-avg wheat-hrw-organic-flour_price-mill-receives-stdev) 2
+    if wheat-hrw-organic-flour_price-to-buy < wheat-hrw-organic_price-elevator-receives-avg [ set wheat-hrw-organic-flour_price-to-buy wheat-hrw-organic_price-elevator-receives-avg ]
+    
+    set wheat-snowmass-conventional-flour_price-to-buy precision (random-normal wheat-snowmass-conventional-flour_price-mill-receives-avg wheat-snowmass-conventional-flour_price-mill-receives-stdev) 2
+    if wheat-snowmass-conventional-flour_price-to-buy < wheat-snowmass-conventional_price-elevator-receives-avg [ set wheat-snowmass-conventional-flour_price-to-buy wheat-snowmass-conventional_price-elevator-receives-avg ]
+
+    if hide-turtles? = TRUE [ ht ]
+  ]
+
+end
+
+
+to setup-peach-agents
+  
+  setup-peach_processors
+  setup-peach_altmarks 
+  
+end
+
+ to setup-peach_processors
+
+  create-peach_processors number-peach_processors
+  [
+    set heading 0
+    setxy random max-pxcor random max-pycor
+    set shape "house"
+    set size 2
+    set color orange
+    set id who
+    set agent-name word "processor " id
+    set assets 0
+    set assets-initial assets
+
+    set peaches-seconds_inventory-maximum 200000000
+    set peaches-iqf_inventory-maximum 200000000
+
+    set peaches-seconds_price-to-buy precision (random-normal peach-seconds_price-farmgate-wholesale-avg peach-seconds_price-farmgate-wholesale-stdev) 2
+    set peaches-iqf_price-to-sell precision (random-normal peach-iqf_price-iqf-receives-avg peach-iqf_price-iqf-receives-stdev ) 2
+
+
+    if debug-mode = TRUE [
+     print "processor conventional price to buy"
+     print peaches-seconds_price-to-buy ]
+
+    if hide-turtles? = TRUE [ ht ]
+  ]
+
+end
+
+
+to setup-peach_altmarks
+
+  set-default-shape distributors "plant"
+  create-peach_altmarks number-peach_altmarks
+  [
+    setxy random max-pxcor random max-pycor
+    set size 2
+    set color green
+    set id who
+    set agent-name word "alternative market " id
+    set assets 0
+    set assets-initial assets
+
+    set peaches-conventional_inventory-maximum 4500
+    set peaches-organic_inventory-maximum 4500
+
+
+    set peaches-conventional_price-to-buy precision ( random-normal peach-conventional_price-farmgate-altmark-avg peach-conventional_price-farmgate-altmark-stdev ) 2
+    set peaches-organic_price-to-buy precision ( random-normal peach-organic_price-farmgate-altmark-avg peach-organic_price-farmgate-altmark-stdev ) 2    
+    
+    
+    if debug-mode = TRUE [
+      print "altmark conventional price to buy"
+      print peaches-conventional_price-to-buy ]
+
+    if hide-turtles? = TRUE [ ht ]
+   ]
+
+  end
+
+to setup-beef-agents
+  
+  setup-beef_packing-houses
+  
+end
+
+to setup-beef_packing-houses
+
+  create-beef_packing-houses number-beef_packing-houses
+  [
+    set heading 0
+    setxy random max-pxcor random max-pycor
+    set shape "house"
+    set size 2
+    set color blue
+    set id who
+    set agent-name word "packing-house " id
+    set assets 0
+    set assets-initial assets
+    
+    set beef-grassfed_inventory-maximum 200000000
+    set beef-colorado-source-id_inventory-maximum 200000000
+    set beef-animal-welfare_inventory-maximum 200000000
+
+    set beef-grassfed_price-to-buy precision ( random-normal beef-grassfed-live-weight_price-farmgate-avg beef-grassfed-live-weight_price-farmgate-stdev ) 2
+    if beef-grassfed_price-to-buy < 0 [ set beef-grassfed_price-to-buy beef-grassfed-live-weight_price-farmgate-avg ]
+
+    set beef-colorado-source-id_price-to-buy precision ( random-normal beef-colorado-source-id-live-weight_price-farmgate-avg beef-colorado-source-id-live-weight_price-farmgate-stdev ) 2
+    if beef-colorado-source-id_price-to-buy < 0 [ set beef-colorado-source-id_price-to-buy beef-colorado-source-id-live-weight_price-farmgate-avg ]
+    
+    set beef-animal-welfare_price-to-buy precision ( random-normal beef-animal-welfare-live-weight_price-farmgate-avg beef-animal-welfare-live-weight_price-farmgate-stdev ) 2
+    if beef-animal-welfare_price-to-buy < 0 [ set beef-animal-welfare_price-to-buy beef-animal-welfare-live-weight_price-farmgate-avg ]
+   
+    if debug-mode = TRUE [
+      print "packing house grassfed price to buy"
+      print beef-grassfed_price-to-buy ]
+
+    if hide-turtles? = TRUE [ ht ]
+    ]
+  
+  ask one-of beef_packing-houses [ 
+    set small-size 1 ] 
+
+end
+
+to setup-distributors
+  
+  set-default-shape distributors "house"
+  create-distributors number-distributors [
+    
+    set size 2
+    set color green
+    set id who
+    set agent-name word "distributor " id
+    set assets 0
+    set assets-initial assets
+
+    ;; potatoes
+    
+    set potatoes-russet-conventional-fresh_inventory-maximum 1000000000000
+    set potatoes-russet-conventional-processed_inventory-maximum 1000000000000
+    set potatoes-russet-organic-fresh_inventory-maximum 1000000000000
+    set potatoes-russet-organic-processed_inventory-maximum 1000000000000
+    set potatoes-purple-conventional-fresh_inventory-maximum 1000000000000
+    set potatoes-purple-conventional-processed_inventory-maximum 1000000000000
+    set potatoes-purple-organic-fresh_inventory-maximum 1000000000000
+    set potatoes-purple-organic-processed_inventory-maximum 1000000000000
+    set potatoes-russet-conventional-fresh-small_inventory-maximum 1000000000000
+    set out-of-state-french-fry_inventory-maximum 1000000000000
+    
+    ;; wheat
+    
+    set wheat-hrw-conventional-flour_inventory-maximum 20000000000
+    set wheat-hrw-conventional-bread_inventory-maximum 20000000000
+    set wheat-hrw-organic-flour_inventory-maximum 20000000000
+    set wheat-hrw-organic-bread_inventory-maximum 20000000000
+    set wheat-snowmass-conventional-flour_inventory-maximum 20000000000
+    set wheat-snowmass-conventional-bread_inventory-maximum 20000000000  
+    
+    ;; peaches
+    
+    set peaches-conventional_inventory-maximum 1000000000000
+    set peaches-organic_inventory-maximum 1000000000000
+    set peaches-seconds_inventory-maximum 1000000000000
+    set peaches-iqf_inventory-maximum 1000000000000
+    set peaches-out-of-state_inventory-maximum 1000000
+    
+    ;; beef variables to come
+    set beef-conventional_inventory-maximum 1000000000000
+    set beef-grassfed_inventory-maximum 1000000000000
+    set beef-colorado-source-id_inventory-maximum 1000000000000
+    set beef-animal-welfare_inventory-maximum 1000000000000
+    
+    ;; potatoes 
+    
+    set potatoes-russet-conventional-fresh_price-to-buy precision ( random-normal potato-conventional-russet_price-shipper-receives-avg potato-conventional-russet_price-shipper-receives-stdev ) 2 ;flagged: variable rename
+    if potatoes-russet-conventional-fresh_price-to-buy < potato-conventional-russet_price-farmgate-avg [ set potatoes-russet-conventional-fresh_price-to-buy potato-conventional-russet_price-farmgate-avg ]
+    set potatoes-russet-organic-fresh_price-to-buy precision ( random-normal potato-organic-russet_price-shipper-receives-avg potato-organic-russet_price-shipper-receives-stdev ) 2 ;flagged: variable rename
+    if potatoes-russet-organic-fresh_price-to-buy < potato-organic-russet_price-farmgate-avg [ set potatoes-russet-organic-fresh_price-to-buy potato-organic-russet_price-farmgate-avg ] ;flagged: variable rename
+    set potatoes-purple-conventional-fresh_price-to-buy precision ( random-normal potato-conventional-purple_price-shipper-receives-avg potato-conventional-purple_price-shipper-receives-stdev ) 2 ;flagged: variable rename
+    if potatoes-purple-conventional-fresh_price-to-buy < potato-conventional-purple_price-farmgate-avg [ set potatoes-purple-conventional-fresh_price-to-buy potato-conventional-purple_price-farmgate-avg ]
+    set potatoes-purple-organic-fresh_price-to-buy precision ( random-normal potato-organic-purple_price-shipper-receives-avg potato-organic-purple_price-shipper-receives-stdev ) 2 ;flagged: variable rename
+    if potatoes-purple-organic-fresh_price-to-buy < potato-organic-purple_price-farmgate-avg [ set potatoes-purple-organic-fresh_price-to-buy potato-organic-purple_price-farmgate-avg ] ;flagged: variable rename
+    set potatoes-russet-conventional-fresh-small_price-to-buy precision ( random-normal potato-conventional-russet-small_price-shipper-receives-avg potato-conventional-russet-small_price-shipper-receives-stdev ) 2 ;flagged: variable rename
+    if potatoes-russet-conventional-fresh-small_price-to-buy < potato-conventional-russet-small_price-farmgate-avg [ set potatoes-russet-conventional-fresh-small_price-to-buy potato-conventional-russet-small_price-farmgate-avg ] ;flagged: variable rename
+
+    if potato-scenario = "specialty-product" [
+    set potatoes-russet-conventional-processed_price-to-buy precision ( random-normal potato-conventional-russet-processed_price-processor-receives-avg potato-conventional-russet-processed_price-processor-receives-stdev ) 2 ;flagged: variable rename
+    if potatoes-russet-conventional-processed_price-to-buy < potato-conventional-russet_price-shipper-receives-avg [ set potatoes-russet-conventional-processed_price-to-buy potato-conventional-russet_price-shipper-receives-avg ]
+    set potatoes-russet-organic-processed_price-to-buy precision ( random-normal potato-organic-russet-processed_price-processor-receives-avg potato-organic-russet-processed_price-processor-receives-stdev) 2 ;flagged: variable rename
+    if potatoes-russet-organic-processed_price-to-buy < potato-organic-russet_price-shipper-receives-avg [ set potatoes-russet-organic-processed_price-to-buy potato-organic-russet_price-shipper-receives-avg ] ;flagged: variable rename
+    set potatoes-purple-conventional-processed_price-to-buy precision ( random-normal potato-conventional-purple-processed_price-processor-receives-avg potato-conventional-purple-processed_price-processor-receives-stdev ) 2 ;flagged: variable rename
+    if potatoes-purple-conventional-processed_price-to-buy < potato-conventional-purple_price-shipper-receives-avg [ set potatoes-purple-conventional-processed_price-to-buy potato-conventional-purple_price-shipper-receives-avg ]
+    set potatoes-purple-organic-processed_price-to-buy precision ( random-normal potato-organic-purple-processed_price-processor-receives-avg potato-organic-purple-processed_price-processor-receives-stdev ) 2 ;flagged: variable rename
+    if potatoes-purple-organic-processed_price-to-buy < potato-organic-purple_price-shipper-receives-avg [ set potatoes-purple-organic-processed_price-to-buy potato-organic-purple_price-shipper-receives-avg ] ;flagged: variable rename
+    ]
+
+    ;; wheat
+    
+    set wheat-hrw-conventional-flour_price-to-buy precision ( random-normal wheat-hrw-conventional-flour_price-mill-receives-avg wheat-hrw-conventional-flour_price-mill-receives-stdev ) 2
+    if wheat-hrw-conventional-flour_price-to-buy < wheat-hrw-conventional_price-elevator-receives-avg [ set wheat-hrw-conventional-flour_price-to-buy wheat-hrw-conventional_price-elevator-receives-avg ]
+    set wheat-hrw-conventional-bread_price-to-buy precision ( random-normal wheat-hrw-conventional-bread_price-baker-receives-avg wheat-hrw-conventional-bread_price-baker-receives-stdev ) 2
+    if wheat-hrw-conventional-bread_price-to-buy < wheat-hrw-conventional-flour_price-mill-receives-avg [ set wheat-hrw-conventional-bread_price-to-buy wheat-hrw-conventional-flour_price-mill-receives-avg ]
+    
+    set wheat-hrw-organic-flour_price-to-buy precision ( random-normal wheat-hrw-organic-flour_price-mill-receives-avg wheat-hrw-organic-flour_price-mill-receives-stdev ) 2
+    if wheat-hrw-organic-flour_price-to-buy < wheat-hrw-organic_price-elevator-receives-avg [ set wheat-hrw-organic-flour_price-to-buy wheat-hrw-organic_price-elevator-receives-avg ]
+    set wheat-hrw-organic-bread_price-to-buy precision ( random-normal wheat-hrw-organic-bread_price-baker-receives-avg wheat-hrw-organic-bread_price-baker-receives-stdev ) 2
+    if wheat-hrw-organic-bread_price-to-buy < wheat-hrw-organic-flour_price-mill-receives-avg [ set wheat-hrw-organic-bread_price-to-buy wheat-hrw-organic-flour_price-mill-receives-avg ]
+
+    set wheat-snowmass-conventional-flour_price-to-buy precision ( random-normal wheat-snowmass-conventional-flour_price-mill-receives-avg wheat-snowmass-conventional-flour_price-mill-receives-stdev ) 2
+    if wheat-snowmass-conventional-flour_price-to-buy < wheat-snowmass-conventional_price-elevator-receives-avg [ set wheat-snowmass-conventional-flour_price-to-buy wheat-snowmass-conventional_price-elevator-receives-avg ]
+    set wheat-snowmass-conventional-bread_price-to-buy precision ( random-normal wheat-snowmass-conventional-bread_price-baker-receives-avg wheat-snowmass-conventional-bread_price-baker-receives-stdev ) 2
+    if wheat-snowmass-conventional-bread_price-to-buy < wheat-snowmass-conventional-flour_price-mill-receives-avg [ set wheat-snowmass-conventional-bread_price-to-buy wheat-snowmass-conventional-flour_price-mill-receives-avg ]
+ 
+    ;; peaches
+    
+    set peaches-conventional_price-to-buy precision ( random-normal peach-conventional_price-farmgate-wholesale-avg peach-conventional_price-farmgate-wholesale-stdev ) 2
+    if peaches-conventional_price-to-buy < 0 [ set peaches-conventional_price-to-buy peach-conventional_price-farmgate-wholesale-avg ]
+    
+    set peaches-organic_price-to-buy precision ( random-normal peach-organic_price-farmgate-wholesale-avg peach-organic_price-farmgate-wholesale-stdev ) 2
+    if peaches-organic_price-to-buy < 0 [ set peaches-organic_price-to-buy peach-organic_price-farmgate-wholesale-avg ]
+    
+    set peaches-iqf_price-to-buy precision ( random-normal peach-iqf_price-iqf-receives-avg peach-iqf_price-iqf-receives-stdev ) 2
+    if peaches-iqf_price-to-buy < 0 [ set peaches-iqf_price-to-buy peach-iqf_price-iqf-receives-avg ]
+    
+    set peaches-seconds_price-to-buy precision ( random-normal peach-seconds_price-farmgate-wholesale-avg peach-seconds_price-farmgate-wholesale-stdev ) 2
+    if peaches-seconds_price-to-buy < 0 [ set peaches-seconds_price-to-buy peach-seconds_price-farmgate-wholesale-avg ]
+      
+    set peaches-out-of-state_price-to-buy precision ( random-normal peach-out-of-state_price-distributor-receives-avg peach-out-of-state_price-distributor-receives-stdev ) 2
+    if peaches-out-of-state_price-to-buy < 0 [ set peaches-seconds_price-to-buy peach-out-of-state_price-distributor-receives-avg ]
+    
+    ;; beef
+    set beef-conventional_price-to-buy precision ( random-normal beef-conventional_price-packing-house-receives-avg beef-conventional_price-packing-house-receives-stdev ) 2
+    if beef-conventional_price-to-buy < 0 [ set beef-conventional_price-to-buy beef-conventional_price-packing-house-receives-avg ]
+    
+    set beef-grassfed_price-to-buy precision ( random-normal beef-grassfed_price-packing-house-receives-avg beef-grassfed_price-packing-house-receives-stdev ) 2
+    if beef-grassfed_price-to-buy < 0 [ set beef-grassfed_price-to-buy beef-grassfed_price-packing-house-receives-avg ]
+
+    set beef-colorado-source-id_price-to-buy precision ( random-normal beef-colorado-source-id_price-packing-house-receives-avg beef-colorado-source-id_price-packing-house-receives-stdev ) 2
+    if beef-colorado-source-id_price-to-buy < 0 [ set beef-colorado-source-id_price-to-buy beef-colorado-source-id_price-packing-house-receives-avg ]
+    
+    set beef-animal-welfare_price-to-buy precision ( random-normal beef-animal-welfare_price-packing-house-receives-avg beef-animal-welfare_price-packing-house-receives-stdev ) 2
+    if beef-animal-welfare_price-to-buy < 0 [ set beef-animal-welfare_price-to-buy beef-animal-welfare_price-packing-house-receives-avg ]
+
+    
+    if hide-turtles? = TRUE [ ht ]
+  ]
+  
+end
+
+
+to setup-dps_buyers
+  
+  set-default-shape dps_buyers "house"
+  create-dps_buyers 1 [
+    set size 1
+    set color yellow
+    set id who
+    set agent-name word "dps buyer " id
+    set assets 0
+    set assets-initial assets 
+  
+  ; the maximum storage capacity of dps buyer is set at the amount that dps purchases annually according to Chef Ann via Marion
+  ; assumes that dps will keep purchasing until it's at max capacity -- need to test this
+  ; data from 2018-19 academic year
+    
+  ;; potatoes
+;    fresh 29136 lbs (2786 from colorado)
+;    frozen 23796 lbs
+;    fries 231400 lbs
+;    total pounds = 284332
+    let temp-val 284332
+;    if DPS_x1000? = TRUE [
+;      set temp-val 28433200
+;    ]
+;    print "**** POTATOES BOUGHT are at 1000x baseline.  See Setup-DPS_Buyers in setupDashboard.nls"
+    if potato-scenario = "baseline" [ set out-of-state-french-fry_inventory-maximum temp-val ]  ; 284332 ] ; for simplicity assume all potatoes purchased are out of state french fries in baseline
+    if potato-scenario = "fresh-CO" [ set potatoes-russet-conventional-fresh_inventory-maximum temp-val ]  ; 284332 ]
+    if potato-scenario = "gfpp" [ set potatoes-russet-conventional-fresh_inventory-maximum temp-val ]  ; 284332 ]
+    if potato-scenario = "small-potatoes" [ set potatoes-russet-conventional-fresh-small_inventory-maximum temp-val ]  ; 284332 ]
+    if potato-scenario = "specialty-product" [ set potatoes-purple-conventional-processed_inventory-maximum temp-val ]  ; 284332 ]
+    
+  
+  ;; wheat
+  ;; wheat bread 115,360 loaves = 173,040 lbs. (loaf of bread weighs 24 oz. aka 1.5 lbs. according to chef ann)
+  ;; flour 3,425 50-lb bags = 171,250 lbs.
+    
+    if wheat-scenario = "baseline" [ 
+      set wheat-hrw-conventional-flour_inventory-maximum 171250
+      set wheat-hrw-conventional-bread_inventory-maximum 173040
+    ]
+    
+    if wheat-scenario = "organic" [
+      set wheat-hrw-organic-flour_inventory-maximum 171250
+      set wheat-hrw-organic-bread_inventory-maximum 173040
+    ]
+    
+    if wheat-scenario = "snowmass" [
+      set wheat-snowmass-conventional-flour_inventory-maximum 171250
+      set wheat-snowmass-conventional-bread_inventory-maximum 173040
+    ]
+  
+  ;; peaches
+;    44,200 lbs. local peaches
+;    15,848 lbs. fresh peaches from out of state
+;    total fresh peaches 60,048
+;    chef ann requesting amt for canned
+    ; DPS said 13,342 lbs. peaches purchased in 2018 based on records sent via email 4/23/21
+  ;  which number is correct?
+    
+    if peach-scenario = "baseline" [ set peaches-out-of-state_inventory-maximum 60048 ]
+    if peach-scenario = "CO-fresh" [ set peaches-conventional_inventory-maximum 60048]
+    if peach-scenario = "IQF" [ set peaches-iqf_inventory-maximum 60048 ] 
+  
+  ;; beef inventory variables to come
+;    ground beef 200,000 lbs. 
+;    ground beef patties 142,500 lbs. 
+;    total 342,500 lbs.
+    if beef-scenario = "baseline" [ set beef-conventional_inventory-maximum 342500 ] 
+    if beef-scenario = "grassfed" [ set beef-grassfed_inventory-maximum 342500 ]
+    if beef-scenario = "colorado-source-id" [ set beef-colorado-source-id_inventory-maximum 342500 ]
+    if beef-scenario = "animal-welfare" [ set beef-animal-welfare_inventory-maximum 342500 ] 
+    
+    
+  ;; potato costs  
+    set potatoes-russet-conventional-fresh_price-to-buy precision ( random-normal potato-conventional-russet_price-distributor-receives-avg potato-conventional-russet_price-distributor-receives-stdev ) 2 ;flagged: variable rename
+     if potatoes-russet-conventional-fresh_price-to-buy < potato-conventional-russet_price-shipper-receives-avg [ set potatoes-russet-conventional-fresh_price-to-buy potato-conventional-russet_price-shipper-receives-avg ] ;flagged: variable rename
+    set potatoes-russet-organic-fresh_price-to-buy precision ( random-normal potato-organic-russet_price-distributor-receives-avg potato-organic-russet_price-distributor-receives-stdev ) 2 ;flagged: variable rename
+     if potatoes-russet-organic-fresh_price-to-buy < potato-organic-russet_price-shipper-receives-avg [ set potatoes-russet-organic-fresh_price-to-buy potato-organic-russet_price-shipper-receives-avg ] ;flagged: variable rename
+    set potatoes-purple-conventional-fresh_price-to-buy precision ( random-normal potato-conventional-purple_price-distributor-receives-avg potato-conventional-purple_price-distributor-receives-stdev ) 2 ;flagged: variable rename
+     if potatoes-purple-conventional-fresh_price-to-buy < potato-conventional-purple_price-shipper-receives-avg [ set potatoes-purple-conventional-fresh_price-to-buy potato-conventional-purple_price-shipper-receives-avg ]
+    set potatoes-purple-organic-fresh_price-to-buy precision ( random-normal potato-organic-purple_price-distributor-receives-avg potato-organic-purple_price-distributor-receives-stdev ) 2 ;flagged: variable rename
+     if potatoes-purple-organic-fresh_price-to-buy < potato-organic-purple_price-shipper-receives-avg [ set potatoes-purple-organic-fresh_price-to-buy potato-organic-purple_price-shipper-receives-avg ] ;flagged: variable rename
+    set potatoes-russet-conventional-fresh-small_price-to-buy precision ( random-normal potato-conventional-russet-small_price-distributor-receives-avg potato-conventional-russet-small_price-distributor-receives-stdev ) 2 ;flagged: variable rename
+     if potatoes-russet-conventional-fresh-small_price-to-buy < potato-conventional-russet-small_price-shipper-receives-avg [ set potatoes-russet-conventional-fresh-small_price-to-buy potato-conventional-russet-small_price-shipper-receives-avg ] ;flagged: variable rename
+
+    if potato-scenario = "specialty-product" [
+      set potatoes-russet-conventional-processed_price-to-buy precision ( random-normal potato-conventional-russet-processed_price-distributor-receives-avg potato-conventional-russet-processed_price-distributor-receives-stdev ) 2 ;flagged: variable rename
+       if potatoes-russet-conventional-processed_price-to-buy < potato-conventional-russet-processed_price-processor-receives-avg [ set potatoes-russet-conventional-processed_price-to-buy potato-conventional-russet-processed_price-processor-receives-avg ]
+      set potatoes-russet-organic-processed_price-to-buy precision ( random-normal potato-organic-russet-processed_price-distributor-receives-avg potato-organic-russet-processed_price-distributor-receives-stdev) 2 ;flagged: variable rename
+       if potatoes-russet-organic-processed_price-to-buy < potato-organic-russet-processed_price-processor-receives-avg [ set potatoes-russet-organic-processed_price-to-buy potato-organic-russet-processed_price-processor-receives-avg ] ;flagged: variable rename
+      set potatoes-purple-conventional-processed_price-to-buy precision ( random-normal potato-conventional-purple-processed_price-distributor-receives-avg potato-conventional-purple-processed_price-distributor-receives-stdev ) 2 ;flagged: variable rename
+       if potatoes-purple-conventional-processed_price-to-buy < potato-conventional-purple-processed_price-processor-receives-avg [ set potatoes-purple-conventional-processed_price-to-buy potato-conventional-purple-processed_price-processor-receives-avg ]
+      set potatoes-purple-organic-processed_price-to-buy precision ( random-normal potato-organic-purple-processed_price-distributor-receives-avg potato-organic-purple-processed_price-distributor-receives-stdev ) 2 ;flagged: variable rename
+       if potatoes-purple-organic-processed_price-to-buy < potato-organic-purple-processed_price-processor-receives-avg [ set potatoes-purple-organic-processed_price-to-buy potato-organic-purple-processed_price-processor-receives-avg ] ;flagged: variable rename
+    ]
+  
+  ;; wheat costs    
+    set wheat-hrw-conventional-flour_price-to-buy precision ( random-normal wheat-hrw-conventional-flour_price-distributor-receives-avg wheat-hrw-conventional-flour_price-distributor-receives-stdev ) 2
+      if wheat-hrw-conventional-flour_price-to-buy < wheat-hrw-conventional-flour_price-mill-receives-avg [ set wheat-hrw-conventional-flour_price-to-buy wheat-hrw-conventional-flour_price-mill-receives-avg ]   
+    
+    set wheat-hrw-organic-flour_price-to-buy precision ( random-normal wheat-hrw-organic-flour_price-distributor-receives-avg wheat-hrw-organic-flour_price-distributor-receives-stdev ) 2
+      if wheat-hrw-organic-flour_price-to-buy < wheat-hrw-organic-flour_price-mill-receives-avg [ set wheat-hrw-organic-flour_price-to-buy wheat-hrw-organic-flour_price-mill-receives-avg ] 
+    
+    set wheat-snowmass-conventional-flour_price-to-buy precision ( random-normal wheat-snowmass-conventional-flour_price-distributor-receives-avg wheat-snowmass-conventional-flour_price-distributor-receives-stdev ) 2
+      if wheat-snowmass-conventional-flour_price-to-buy < wheat-snowmass-conventional-flour_price-mill-receives-avg [ set wheat-snowmass-conventional-flour_price-to-buy wheat-snowmass-conventional-flour_price-mill-receives-avg ] 
+    
+    set wheat-hrw-conventional-bread_price-to-buy precision ( random-normal wheat-hrw-conventional-bread_price-distributor-receives-avg wheat-hrw-conventional-bread_price-distributor-receives-stdev ) 2
+      if wheat-hrw-conventional-bread_price-to-buy < wheat-hrw-conventional-bread_price-baker-receives-avg [ set wheat-hrw-conventional-bread_price-to-buy wheat-hrw-conventional-bread_price-baker-receives-avg ] 
+    
+    set wheat-hrw-organic-bread_price-to-buy precision ( random-normal wheat-hrw-organic-bread_price-distributor-receives-avg wheat-hrw-organic-bread_price-distributor-receives-stdev ) 2
+      if wheat-hrw-organic-bread_price-to-buy < wheat-hrw-conventional-bread_price-baker-receives-avg [ set wheat-hrw-organic-bread_price-to-buy wheat-hrw-conventional-bread_price-baker-receives-avg ]  
+    
+    set wheat-snowmass-conventional-bread_price-to-buy precision ( random-normal wheat-snowmass-conventional-bread_price-distributor-receives-avg wheat-snowmass-conventional-bread_price-distributor-receives-stdev ) 2
+      if wheat-snowmass-conventional-bread_price-to-buy < wheat-hrw-conventional-bread_price-baker-receives-avg [ set wheat-snowmass-conventional-bread_price-to-buy wheat-hrw-conventional-bread_price-baker-receives-avg ] 
+  
+  ;; peach costs 
+  
+   set peaches-conventional_price-to-buy precision ( random-normal peach-conventional_price-farmgate-wholesale-avg peach-conventional_price-farmgate-wholesale-stdev ) 2
+   ;if peaches-conventional_price-to-buy < peach-conventional_price-wholesale-avg [ set peaches-conventional_price-to-buy peach-conventional_price-wholesale-avg ]
+   set peaches-organic_price-to-buy precision ( random-normal peach-organic_price-farmgate-wholesale-avg peach-organic_price-farmgate-wholesale-stdev ) 2
+   set peaches-iqf_price-to-buy precision ( random-normal peach-iqf_price-iqf-receives-avg peach-iqf_price-iqf-receives-stdev ) 2
+   ;if iqf-conventional_price-to-buy < ( peach-conventional_price-wholesale-avg * 1.25 ) [ set iqf-conventional_price-to-buy ( peach-conventional_price-wholesale-avg * 1.25 ) ] ]
+  
+
+  ;; beef costs
+    set beef-conventional_price-to-buy precision ( random-normal beef-conventional_price-distributor-receives-avg beef-conventional_price-distributor-receives-stdev ) 2
+    if beef-conventional_price-to-buy < 0 [ set beef-conventional_price-to-buy beef-conventional_price-distributor-receives-avg ]
+    
+    set beef-grassfed_price-to-buy precision ( random-normal beef-grassfed_price-distributor-receives-avg beef-grassfed_price-distributor-receives-stdev ) 2
+    if beef-grassfed_price-to-buy < 0 [ set beef-grassfed_price-to-buy beef-grassfed_price-distributor-receives-avg ]
+
+    set beef-colorado-source-id_price-to-buy precision ( random-normal beef-colorado-source-id_price-distributor-receives-avg beef-colorado-source-id_price-distributor-receives-stdev ) 2
+    if beef-colorado-source-id_price-to-buy < 0 [ set beef-colorado-source-id_price-to-buy beef-colorado-source-id_price-distributor-receives-avg ]
+    
+    set beef-animal-welfare_price-to-buy precision ( random-normal beef-animal-welfare_price-distributor-receives-avg beef-animal-welfare_price-distributor-receives-stdev ) 2
+    if beef-animal-welfare_price-to-buy < 0 [ set beef-animal-welfare_price-to-buy beef-animal-welfare_price-distributor-receives-avg ]
+
+  ]
+  
+end
+
+
+to move-agents
+  
+  let denver-patches patches with [county-denver = 1]
+  ask wheat_elevators [
+    let available-patches denver-patches with [occupied = 0] 
+    move-to one-of available-patches
+    ask patch-here [
+      set occupied 1
+    ]
+  ]
+  ask wheat_mills [
+    let available-patches denver-patches with [occupied = 0] 
+    move-to one-of available-patches
+    ask patch-here [
+      set occupied 1
+    ]
+  ]
+  ask wheat_bakers [
+    let available-patches denver-patches with [occupied = 0] 
+    move-to one-of available-patches
+    ask patch-here [
+      set occupied 1
+    ]      
+  ]
+  ask distributors [
+    let available-patches denver-patches with [occupied = 0] 
+    move-to one-of available-patches
+    ask patch-here [
+      set occupied 1
+    ]
+  ]
+  ask dps_buyers [
+    let available-patches denver-patches with [occupied = 0] 
+    move-to one-of available-patches
+    ask patch-here [
+      set occupied 1
+    ]  
+  ]    
+  
+end
+
+
+to setup-estimated-yields
+  
+  ; add updated conversion factor 
+  
+  ; took out old 2.20462 kg to lb conversion and * 100 (for hectares in patch) from all calculations below because new potato yield .asc files are in cwt/acre so we use a different conversion factor for cwt/acre -> lb/patch 
+      ; 1 cwt = 100 lb
+      ; 1 hectare = 2.47105 acres 
+      ; 1 patch = 100 hectares
+      ; 1 cwt / 1 acre * ( 100 lbs / 1 cwt ) * ( 2.47105 acres / 1 hectare ) * ( 100 hectares / 1 patch ) = 24,710.5 conversion factor 
+      ; cwt / acre * 24,710.5 = lbs / patch 
+      ; el/kj 1/10/22
+  
+  
+  ;; potatoes
+  
+  ask potato_farmers [
+    let f-id  farm-id
+
+    ; All conventional potatoes, creating p-set0 and p-set1 based on, ultimately, remainder-patch (i.e., 0 or 1)
+    let p-set patches with [ farmer = f-id ]
+    set p-set p-set with [ rotation = "potato" and certified-organic = 0 ]
+    let p-set0 p-set with [ remainder-patch = 0 ]
+    let p-set1 p-set with [ remainder-patch = 1 ]
+
+    ; Russet conventional
+    set potato-farmers_yield-estimated_russet-conventional  sum [ potato-canela-mean-yield ] of p-set0 * russet-canela-allocation
+    set potato-farmers_yield-estimated_russet-conventional  potato-farmers_yield-estimated_russet-conventional + ( sum [ potato-canela-mean-yield ] of p-set1 * russet-canela-allocation * ( ( hectares-farmed-potatoes - ( 100 * ( patches-in-potatoes - 1 ))) / 100  ) )
+    set potato-farmers_yield-estimated_russet-conventional  24170.5 * potato-farmers_yield-estimated_russet-conventional
+    let total_russet_yield potato-farmers_yield-estimated_russet-conventional
+    set potato-farmers_yield-estimated_russet-conventional (.67 * total_russet_yield)
+
+    ; Small russet conventional
+    set potato-farmers_yield-estimated_russet-conventional-small (.33 * total_russet_yield)
+
+    ; Purple conventional
+    set potato-farmers_yield-estimated_purple-conventional  sum [ potato-purple-mean-yield ] of p-set0 * purple-allocation
+    set potato-farmers_yield-estimated_purple-conventional  potato-farmers_yield-estimated_purple-conventional + ( sum [ potato-purple-mean-yield ] of p-set1 * purple-allocation * (( hectares-farmed-potatoes - ( 100 * ( patches-in-potatoes - 1 )))/ 100 ) )
+    set potato-farmers_yield-estimated_purple-conventional  24170.5 * potato-farmers_yield-estimated_purple-conventional
+
+    ; All organic potatoes, creating p-set0 and p-set1 based on, ultimately, remainder-patch (i.e., 0 or 1)
+    set p-set patches with [ farmer = f-id ]
+    set p-set p-set with [ rotation = "potato" and certified-organic = 1 ]
+    set p-set0 p-set with [ remainder-patch = 0 ]
+    set p-set1 p-set with [ remainder-patch = 1 ]
+
+      ; Russet organic
+    set potato-farmers_yield-estimated_russet-organic  sum [ potato-canela-org-mean-yield ] of p-set0 * russet-canela-allocation
+    set potato-farmers_yield-estimated_russet-organic  potato-farmers_yield-estimated_russet-organic + ( sum [ potato-canela-org-mean-yield ] of p-set1 * russet-canela-allocation * (( hectares-farmed-potatoes - ( 100 * ( patches-in-potatoes - 1 ))) / 100 ) )
+    set potato-farmers_yield-estimated_russet-organic  24170.5 * potato-farmers_yield-estimated_russet-organic
+
+    ; Purple organic
+    set potato-farmers_yield-estimated_purple-organic  sum [ potato-purple-org-mean-yield ] of p-set0 * purple-allocation
+    set potato-farmers_yield-estimated_purple-organic  potato-farmers_yield-estimated_purple-organic + ( sum [ potato-purple-org-mean-yield ] of p-set1 * purple-allocation * (( hectares-farmed-potatoes - ( 100 * ( patches-in-potatoes - 1 ))) / 100 ) )
+    set potato-farmers_yield-estimated_purple-organic  24170.5 * potato-farmers_yield-estimated_purple-organic
+  ]
+  
+  ;; wheat 
+  ask wheat_farmers [
+    
+    let my-wheat-patches my-patches with [ rotation = "wheat" ]
+    let my-conventional-patches ( my-wheat-patches with [ certified-organic != 1 ] )  
+    
+    let my-conv-hectares-even ( count ( my-conventional-patches with [remainder-patch = 0] ) * 100 )
+    let my-conv-hectares-remainder ( count ( my-conventional-patches with [remainder-patch = 1] ) ) * ( abs ( ( 100 * ( patches-in-wheat - 1 ) ) - hectares-farmed-wheat ) )
+    let my-conv-hectares-total ( my-conv-hectares-even + my-conv-hectares-remainder )
+    let my-org-hectares ( hectares-farmed-wheat - my-conv-hectares-total )
+    
+    let my-hrw-conventional-hectares round ( my-conv-hectares-total * hrw-allocation )
+    set wheat-farmers_yield-estimated_hrw-conventional ( my-hrw-conventional-hectares * wheat-hrw-conv-mean-yield * 148.258)
+    let my-snowmass-hectares ( my-conv-hectares-total - my-hrw-conventional-hectares )
+    set wheat-farmers_yield-estimated_snowmass-conventional ( my-snowmass-hectares * wheat-snowmass-conv-mean-yield * 148.258)
+    let my-organic-hectares ( hectares-farmed-wheat - my-conv-hectares-total )
+    set wheat-farmers_yield-estimated_hrw-organic ( my-organic-hectares * wheat-hrw-org-mean-yield * 148.258)
+    
+  ]
+  
+  ;; peaches
+  ask peach_farmers [
+    let f-id  farm-id
+
+    ; All conventional potatoes, creating p-set0 and p-set1 based on, ultimately, remainder-patch (i.e., 0 or 1)
+    let p-set patches with [ farmer = f-id ]
+    set p-set p-set with [ certified-organic = 0 ]
+    let p-set0 p-set with [ remainder-patch = 0 ]
+    let p-set1 p-set with [ remainder-patch = 1 ]
+
+    ; Russet conventional
+    set peach-farmers_yield-estimated_conventional  sum [ peach-conventional-mean-yield ] of p-set0 * 100
+    set peach-farmers_yield-estimated_conventional  peach-farmers_yield-estimated_conventional + ( sum [ peach-conventional-mean-yield ] of p-set1 * ( hectares-farmed-peaches - ( 100 * ( patches-in-peaches - 1 ) ) ) )
+    set peach-farmers_yield-estimated_conventional  2.20462 * peach-farmers_yield-estimated_conventional
+
+    ; All organic potatoes, creating p-set0 and p-set1 based on, ultimately, remainder-patch (i.e., 0 or 1)
+    set p-set patches with [ farmer = f-id ]
+    set p-set p-set with [ certified-organic = 1 ]
+    set p-set0 p-set with [ remainder-patch = 0 ]
+    set p-set1 p-set with [ remainder-patch = 1 ]
+
+      ; Russet organic
+    set peach-farmers_yield-estimated_organic  sum [ peach-organic-mean-yield ] of p-set0 * 100
+    set peach-farmers_yield-estimated_organic  peach-farmers_yield-estimated_organic + ( sum [ peach-organic-mean-yield ] of p-set1 * ( hectares-farmed-peaches - ( 100 * ( patches-in-peaches - 1 ) ) ) )
+    set peach-farmers_yield-estimated_organic  2.20462 * peach-farmers_yield-estimated_organic
+  ]
+  
+end
+
+
+to setup-tables
+
+  ;; potatoes
+  
+  set potato-table_russet-conventional table:make
+  set potato-table_russet-organic table:make
+  set potato-table_purple-conventional table:make
+  set potato-table_purple-organic table:make
+  set potato-table_russet-conventional-small table:make
+  set potato-table_russet-conventional-processed table:make                                                 
+  set potato-table_russet-organic-processed table:make
+  set potato-table_purple-conventional-processed table:make
+  set potato-table_purple-organic-processed table:make
+  
+  ;; wheat
+  
+  set wheat-table_hrw-conventional table:make
+  set wheat-table_hrw-organic table:make
+  set wheat-table_snowmass-conventional table:make
+  set wheat-table_hrw-conventional-flour table:make
+  set wheat-table_hrw-organic-flour table:make
+  set wheat-table_snowmass-conventional-flour table:make
+  set wheat-table_hrw-conventional-bread table:make
+  set wheat-table_hrw-organic-bread table:make
+  set wheat-table_snowmass-conventional-bread table:make
+  
+  ;; peaches
+  
+  set peach-table_conventional table:make
+  set peach-table_organic table:make
+  set peach-table_seconds table:make 
+  set peach-table_iqf table:make 
+  
+  ;; beef
+  set beef-table_conventional table:make
+  set beef-table_grassfed table:make
+  set beef-table_colorado-source-id table:make
+  set beef-table_animal-welfare table:make
+  
+end
+
+
+to ready-plots
+  
+  if wheat-model = TRUE [
+  
+    set-current-plot "Proportion of Wheat Land in Organic vs Conventional Management"
+    set-plot-x-range 1 ( years-in-model-run + 1 )
+    set-plot-y-range 0 100
+  
+    set-current-plot "Total Production by Wheat Type"
+    set-plot-x-range 1 ( years-in-model-run + 1 )
+    set-plot-y-range 0 ( ( sum [ wheat-farmers_yield-estimated_hrw-conventional ] of wheat_farmers ) * 1.1 )
+  
+  ]
+
+end

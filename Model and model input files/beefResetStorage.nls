@@ -1,0 +1,92 @@
+
+;; ***********************************************************************************************************************
+;; this resets the storage of each agentset to 0 every year. potatoes left in inventory at this point are assumed spoiled, 
+;; and are added to the relevant spoilage tracker before the inventory resets
+;; ***********************************************************************************************************************
+
+
+to reset-storage_beef [ agentset ]                         ; Is beef-outside used anywhere else?   
+  
+  ask agentset [
+    
+    if ( agentset = beef_ranchers ) [ 
+      set assets ( assets + ( beef-conventional_inventory-current * beef-conventional-live-weight_price-farmgate-avg ) )
+      set beef-outside ( beef-outside + beef-conventional_inventory-current ) 
+      set beef-conventional_inventory-current 0
+      
+      set assets ( assets + ( beef-grassfed_inventory-current * beef-grassfed-live-weight_price-farmgate-avg ) )
+      set beef-outside ( beef-outside + beef-grassfed_inventory-current ) 
+      set beef-grassfed_inventory-current 0
+      
+      set assets ( assets + ( beef-colorado-source-id_inventory-current * beef-colorado-source-id-live-weight_price-farmgate-avg ) )
+      set beef-outside ( beef-outside + beef-colorado-source-id_inventory-current ) 
+      set beef-colorado-source-id_inventory-current 0
+            
+      set assets ( assets + ( beef-animal-welfare_inventory-current * beef-animal-welfare-live-weight_price-farmgate-avg ) )
+      set beef-outside ( beef-outside + beef-animal-welfare_inventory-current ) 
+      set beef-animal-welfare_inventory-current 0
+      
+      set beef-conventional_passthrough-annual 0 
+      set beef-grassfed_passthrough-annual 0 
+      set beef-colorado-source-id_passthrough-annual 0 
+      set beef-animal-welfare_passthrough-annual 0 
+      
+    ]
+    
+    if ( agentset = beef_packing-houses ) [ 
+      set assets ( assets + ( beef-conventional_inventory-current * beef-conventional_price-packing-house-receives-avg ) )
+      set beef-outside ( beef-outside + beef-conventional_inventory-current ) 
+      set beef-conventional_inventory-current 0
+      
+      set assets ( assets + ( beef-grassfed_inventory-current * beef-grassfed_price-packing-house-receives-avg ) )
+      set beef-outside ( beef-outside + beef-grassfed_inventory-current ) 
+      set beef-grassfed_inventory-current 0
+      
+      set assets ( assets + ( beef-colorado-source-id_inventory-current * beef-colorado-source-id_price-packing-house-receives-avg ) )
+      set beef-outside ( beef-outside + beef-colorado-source-id_inventory-current ) 
+      set beef-colorado-source-id_inventory-current 0
+            
+      set assets ( assets + ( beef-animal-welfare_inventory-current * beef-animal-welfare_price-packing-house-receives-avg ) )
+      set beef-outside ( beef-outside + beef-animal-welfare_inventory-current ) 
+      set beef-animal-welfare_inventory-current 0
+    ]
+
+    if ( agentset = distributors ) [ 
+      
+      set assets ( assets + ( beef-conventional_inventory-current * beef-conventional_price-distributor-receives-avg ) )
+      set beef-outside ( beef-outside + beef-conventional_inventory-current ) 
+      set beef-conventional_inventory-current 0
+      
+      set assets ( assets + ( beef-grassfed_inventory-current * beef-grassfed_price-distributor-receives-avg ) )
+      set beef-outside ( beef-outside + beef-grassfed_inventory-current ) 
+      set beef-grassfed_inventory-current 0
+      
+      set assets ( assets + ( beef-colorado-source-id_inventory-current * beef-colorado-source-id_price-distributor-receives-avg ) )
+      set beef-outside ( beef-outside + beef-colorado-source-id_inventory-current ) 
+      set beef-colorado-source-id_inventory-current 0
+            
+      set assets ( assets + ( beef-animal-welfare_inventory-current * beef-animal-welfare_price-distributor-receives-avg ) )
+      set beef-outside ( beef-outside + beef-animal-welfare_inventory-current ) 
+      set beef-animal-welfare_inventory-current 0
+    ]
+    
+    if ( agentset = dps_buyers ) [ 
+      set beef-dps beef-dps + beef-conventional_inventory-current + beef-grassfed_inventory-current + beef-colorado-source-id_inventory-current + beef-animal-welfare_inventory-current
+      ; expanded to include individual commodities Jan 13, 2023
+      set beef-conventional_dps-purchased-annual-kg  beef-conventional_inventory-current
+      set beef-conventional_dps-purchased-total-model-run-kg ( beef-conventional_dps-purchased-total-model-run-kg + beef-conventional_inventory-current )
+      set beef-grassfed_dps-purchased-annual-kg  beef-grassfed_inventory-current 
+      set beef-grassfed_dps-purchased-total-model-run-kg  ( beef-grassfed_dps-purchased-total-model-run-kg + beef-grassfed_inventory-current )
+      set beef-colorado-source-id_dps-purchased-annual-kg  beef-colorado-source-id_inventory-current 
+      set beef-colorado-source-id_dps-purchased-total-model-run-kg  ( beef-colorado-source-id_dps-purchased-total-model-run-kg + beef-colorado-source-id_inventory-current )
+      set beef-animal-welfare_dps-purchased-annual-kg  beef-animal-welfare_inventory-current 
+      set beef-animal-welfare_dps-purchased-total-model-run-kg  ( beef-animal-welfare_dps-purchased-total-model-run-kg + beef-animal-welfare_inventory-current )
+   
+      set beef-conventional_inventory-current 0
+      set beef-grassfed_inventory-current 0
+      set beef-colorado-source-id_inventory-current 0
+      set beef-animal-welfare_inventory-current 0
+    ]
+  ]
+  
+end

@@ -1,0 +1,91 @@
+to setup-world
+  
+  create-map
+  setup-start-dates
+  setup-gis-landscape
+  
+end
+
+to create-map
+  
+  resize-world 0 624 0 452
+  set-patch-size 1
+  
+end
+
+
+to setup-start-dates
+  
+  set year 1
+  set week 30
+  
+end
+
+
+to setup-gis-landscape
+  
+  ;;the new map file name is county_id
+   set county-load gis:load-dataset "county_id.asc"; load county ids
+  
+   set public-lands gis:load-dataset "public_private_beef.asc"; load PADUS public lands info
+   set forage-range gis:load-dataset "forage-range.asc"; load range forage estimate, lbs per acre
+   set precip-average gis:load-dataset "precip_30yr_avg.asc"; load 1981-2010 average precip from PRISM
+   set irrigated-lands gis:load-dataset "irrigated-yn.asc"; load irrigated areas
+   set grazable-lands gis:load-dataset "grazable.asc"; load grazable public and private- legally speaking
+   
+   set potato-patches-load gis:load-dataset "potato_patches.asc"; load patches where potato production occurred any year 2011-2017 re: Colorado DNR Water Resource Division. Compared against DSSAT, removed <10 patches
+   set canela-mean-load gis:load-dataset "mean_canela.asc"; load mean canela russet yield 1980-2018 DSSAT, kgs per ha
+   set canela-org-mean-load gis:load-dataset "mean_canela_org.asc"
+   set purple-mean-load gis:load-dataset "mean_purple.asc" ; load mean purple yield 1980-2018 DSSAT, kgs per ha
+   set purple-org-mean-load gis:load-dataset "mean_purple_org.asc"
+  
+   set wheat-patches-load gis:load-dataset "wheat_patches.asc"  ; load patches from CropScape where wheat was planted at least 3 times since 2008, for Washington County only, and generalized to 1000 m by 1000 m using a majority rule.
+  
+   ; add wheat-patches (--> wheat-yes-no patch var) and mean load for hrw conv, hrw org, and snowmass conv here, as with potatoes above  
+   ; awaiting mean files from francesco and kevin had an idea about how to calculate wheat-yes-no patch variable based on mean load files once you receive those  - el 5/22/21
+   
+   gis:set-world-envelope-ds gis:envelope-of county-load
+   gis:apply-raster public-lands private-public
+   gis:apply-raster county-load county-id
+   gis:apply-raster forage-range mean-forage-production
+   gis:apply-raster precip-average average-precip
+   gis:apply-raster irrigated-lands irrigated
+   gis:apply-raster grazable-lands grazable
+   gis:apply-raster potato-patches-load potato-yes-no
+   gis:apply-raster wheat-patches-load wheat-yes-no    
+   gis:apply-raster canela-mean-load potato-canela-mean-yield
+   gis:apply-raster canela-org-mean-load potato-canela-org-mean-yield
+   gis:apply-raster purple-mean-load potato-purple-mean-yield
+   gis:apply-raster purple-org-mean-load potato-purple-org-mean-yield
+  ;apply raster for all wheat patch variables
+  
+   ask patches with [county-id > 0] [set pcolor scale-color green county-id 0 10]
+   ask patches [ifelse county-id <= 0 or county-id >= 0 [][set pcolor white]]
+   ask patches [ if pcolor = 0 [ set pcolor 6 ] ] 
+  
+   ask patches with [county-id = 1 or county-id = 6 or county-id = 8] [set county-potato 1]  
+   ask patches with [county-id = 9] [set county-wheat 1]
+   ask patches with [county-id = 2 or county-id = 4] [set county-peach 1]  
+   ask patches with [county-id = 5 or county-id = 7] [set county-beef 1]  
+   ask patches with [county-id = 3] [set county-denver 1]
+  
+  ; avoid NaN error in potato patches with next two commands
+   ask patches with [ potato-yes-no = 1 ] [
+    ifelse potato-canela-mean-yield >= 0; sets all non-producing patches to 0, otherwise they are NaN. 
+    []
+    [ set potato-canela-mean-yield 0
+      set potato-canela-org-mean-yield 0
+      set potato-purple-mean-yield 0
+      set potato-purple-org-mean-yield 0
+    ]
+  ]
+
+  
+  ; the next command needs to happen here, not later in beef rancher setup as experimented with (it was the reason for the scale bug in beef rancher setup)
+   ask patches with [county-beef = 1 and mean-forage-production > 0]
+    [
+     set mean-forage-production mean-forage-production * 112.1 / 4 ; convert from lbs per acre to kg per 100 hectares and account for forage yield to grazing (leave half, 1/4 trampled or soiled)
+     set ann-forage-production mean-forage-production
+    ]
+  
+end

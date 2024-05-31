@@ -1,0 +1,606 @@
+
+;This procedure carries out contract fulfillment amongst different agents in the potato supply chain. Potatoes and cash are exchanged based on contracts set during
+;the contract negotiation phase. Potatoes sent and outstanding quantity table entries are updated to reflect these changes. 
+
+;Table notes:
+;table set used to update price
+;table sum used to update quantity
+;see matrix to tabe API for more info on these procedures
+
+;fulfill-contracts-API
+
+to fulfillContracts_russetConventionalFresh [ sellers buyers ] 
+  
+ask sellers[
+    let col-id id
+    let product-avail-to-sell potatoes-russet-conventional-fresh_inventory-current
+    let amount-exchanged 0
+    let price-exchanged 0
+    let price-tag 0
+
+    ask buyers[
+      let row-id id
+      
+      if check-entry potato-table_russet-conventional  row-id col-id POTATO_OUTSTANDING_QUANTITY POTATO_QUANTITY POTATO_SENT [
+        
+        ifelse check-bigger-than-entry potato-table_russet-conventional  row-id col-id POTATO_OUTSTANDING_QUANTITY product-avail-to-sell
+        
+        ;these two commands set amount-exchanged using tables 
+        [ set amount-exchanged report-value potato-table_russet-conventional  row-id col-id POTATO_OUTSTANDING_QUANTITY 
+          if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+        [ set amount-exchanged product-avail-to-sell
+          if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+
+          ;set price using tables
+          set price-exchanged report-value potato-table_russet-conventional  row-id col-id POTATO_PRICE
+        if debug-mode = true [ 
+          print " "
+          print "--------------------------------------------------------------"
+          print "price exchanged:" print price-exchanged ]
+
+          
+          set price-tag (price-exchanged * amount-exchanged)
+          if debug-mode = true [
+            print "price tag:" print price-tag]
+
+          ;set buyer assets and inventory
+          if debug-mode = true [
+            print "buyer assets before:" print assets]
+          set assets (assets - price-tag)
+          if debug-mode = true [
+            print "buyer assets after:" print assets]
+          if debug-mode = true [
+            print "buyer inventory before:" print potatoes-russet-conventional-fresh_inventory-current]
+          set potatoes-russet-conventional-fresh_inventory-current (potatoes-russet-conventional-fresh_inventory-current + amount-exchanged)
+          if debug-mode = true [
+            print "buyer inventory after:" print potatoes-russet-conventional-fresh_inventory-current]
+
+          ;set seller assets and inventory
+          ask myself [
+            if debug-mode = true [
+              print "seller assets before:" print assets]
+            set assets (assets + price-tag)
+            if debug-mode = true [
+              print "seller assets after:" print assets]
+            if debug-mode = true [
+              print "seller inventory before:" print potatoes-russet-conventional-fresh_inventory-current]
+            set potatoes-russet-conventional-fresh_inventory-current (potatoes-russet-conventional-fresh_inventory-current - amount-exchanged)
+            if debug-mode = true [
+              print "seller inventory after:" print potatoes-russet-conventional-fresh_inventory-current
+              print " "
+              print "--------------------------------------------------------------"]
+           table_sum potato-table_russet-conventional  row-id col-id POTATO_SENT amount-exchanged debug-mode  
+           update-outstanding-quantity potato-table_russet-conventional  row-id col-id POTATO_OUTSTANDING_QUANTITY POTATO_QUANTITY POTATO_SENT
+          ]
+        ]
+    ]
+  ]
+  
+  ; one random potato farmer is the beneficiary of the price premium from short supply chains during every contracting period 
+  ; three contracting periods so divide total annual dps potato consumption by 3 and give lump sum premium to a farmer in each contracting period
+  if sellers = potato_farmers and potato-scenario = "gfpp" [ 
+    let price-premium ( potato-conventional-russet_gfpp-price-farmgate-avg - potato-conventional-russet_price-farmgate-avg )
+    let dps-potatoes [potatoes-russet-conventional-fresh_inventory-maximum / 3] of one-of dps_buyers
+    let price-gains ( dps-potatoes * price-premium ) 
+    ask one-of potato_farmers [ 
+      set assets ( assets + price-gains )
+      ]
+   ]
+  
+  if debug-mode = TRUE [
+    print "potato price table"
+    debugMatrix potato-table_russet-conventional  POTATO_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potato quantity table"
+    debugMatrix potato-table_russet-conventional  POTATO_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potatoes sent table"
+    debugMatrix potato-table_russet-conventional  POTATO_SENT ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potatoes outstanding quantity table"
+    debugMatrix potato-table_russet-conventional  POTATO_OUTSTANDING_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) ) ]
+
+end 
+
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+
+to fulfillContracts_russetConventionalProcessed [ sellers buyers ] 
+  
+ask sellers[
+    let col-id id
+    let product-avail-to-sell potatoes-russet-conventional-processed_inventory-current
+    let amount-exchanged 0
+    let price-exchanged 0
+    let price-tag 0
+
+    ask buyers[
+      let row-id id
+      
+      if check-entry potato-table_russet-conventional-processed  row-id col-id POTATO_OUTSTANDING_QUANTITY POTATO_QUANTITY POTATO_SENT [
+        
+        ifelse check-bigger-than-entry potato-table_russet-conventional-processed  row-id col-id POTATO_OUTSTANDING_QUANTITY product-avail-to-sell
+        
+        [ set amount-exchanged report-value potato-table_russet-conventional-processed  row-id col-id POTATO_OUTSTANDING_QUANTITY 
+          if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+        [ set amount-exchanged product-avail-to-sell
+          if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+        
+          set price-exchanged report-value potato-table_russet-conventional-processed  row-id col-id POTATO_PRICE
+        if debug-mode = true [ print "price exchanged:" print price-exchanged ]
+
+          set price-tag price-exchanged * amount-exchanged
+          set assets (assets - price-tag)
+          set potatoes-russet-conventional-processed_inventory-current (potatoes-russet-conventional-processed_inventory-current + amount-exchanged)
+
+          ask myself [
+            set assets (assets + price-tag)
+            set potatoes-russet-conventional-processed_inventory-current (potatoes-russet-conventional-processed_inventory-current - amount-exchanged)
+          ]
+        
+          table_sum potato-table_russet-conventional-processed  row-id col-id POTATO_SENT amount-exchanged debug-mode  
+          update-outstanding-quantity potato-table_russet-conventional-processed  row-id col-id POTATO_OUTSTANDING_QUANTITY POTATO_QUANTITY POTATO_SENT
+        
+        ]
+    ]
+  ]
+  
+  if debug-mode = TRUE [
+    print "potato price table"
+    debugMatrix potato-table_russet-conventional-processed  POTATO_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potato quantity table"
+    debugMatrix potato-table_russet-conventional-processed  POTATO_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potatoes sent table"
+    debugMatrix potato-table_russet-conventional-processed  POTATO_SENT ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potatoes outstanding quantity table"
+    debugMatrix potato-table_russet-conventional-processed  POTATO_OUTSTANDING_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) ) ]
+
+end 
+
+
+; END OF THIS POTATO TYPE
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+; START OF NEW POTATO TYPE
+
+
+to fulfillContracts_russetOrganicFresh [ sellers buyers ] 
+  
+ask sellers[
+    let col-id id
+    let product-avail-to-sell potatoes-russet-organic-fresh_inventory-current
+    let amount-exchanged 0
+    let price-exchanged 0
+    let price-tag 0
+
+    ask buyers[
+      let row-id id
+      
+      if check-entry potato-table_russet-organic  row-id col-id POTATO_OUTSTANDING_QUANTITY POTATO_QUANTITY POTATO_SENT [
+        
+        ifelse check-bigger-than-entry potato-table_russet-organic  row-id col-id POTATO_OUTSTANDING_QUANTITY product-avail-to-sell
+         
+        [ set amount-exchanged report-value potato-table_russet-organic  row-id col-id POTATO_OUTSTANDING_QUANTITY 
+          if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+        [ set amount-exchanged product-avail-to-sell
+          if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+        
+          set price-exchanged report-value potato-table_russet-organic  row-id col-id POTATO_PRICE
+        if debug-mode = true [ 
+          print " "
+          print "--------------------------------------------------------------"
+          print "price exchanged:" print price-exchanged ]
+
+          set price-tag (price-exchanged * amount-exchanged)
+          if debug-mode = true [
+            print "price tag:" print price-tag]
+
+          ;set buyer assets and inventory
+          if debug-mode = true [
+            print "buyer assets before:" print assets]
+          set assets (assets - price-tag)
+          if debug-mode = true [
+            print "buyer assets after:" print assets]
+          if debug-mode = true [
+            print "buyer inventory before:" print potatoes-russet-organic-fresh_inventory-current]
+          set potatoes-russet-organic-fresh_inventory-current (potatoes-russet-organic-fresh_inventory-current + amount-exchanged)
+          if debug-mode = true [
+            print "buyer inventory after:" print potatoes-russet-organic-fresh_inventory-current]
+
+          ;set seller assets and inventory
+          ask myself [
+            if debug-mode = true [
+              print "seller assets before:" print assets]
+            set assets (assets + price-tag)
+            if debug-mode = true [
+              print "seller assets after:" print assets]
+            if debug-mode = true [
+              print "seller inventory before:" print potatoes-russet-organic-fresh_inventory-current]
+            set potatoes-russet-organic-fresh_inventory-current (potatoes-russet-organic-fresh_inventory-current - amount-exchanged)
+            if debug-mode = true [
+              print "seller inventory after:" print potatoes-russet-organic-fresh_inventory-current
+              print " "
+              print "--------------------------------------------------------------"]
+           table_sum potato-table_russet-organic  row-id col-id POTATO_SENT amount-exchanged debug-mode  
+           update-outstanding-quantity potato-table_russet-organic  row-id col-id POTATO_OUTSTANDING_QUANTITY POTATO_QUANTITY POTATO_SENT
+          ]
+        ]
+    ]
+  ]
+  
+  if debug-mode = TRUE [
+    print "potato price table"
+    debugMatrix potato-table_russet-organic  POTATO_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potato quantity table"
+    debugMatrix potato-table_russet-organic  POTATO_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potatoes sent table"
+    debugMatrix potato-table_russet-organic  POTATO_SENT ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potatoes outstanding quantity table"
+    debugMatrix potato-table_russet-organic  POTATO_OUTSTANDING_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) ) ]
+
+end 
+
+
+; END OF THIS POTATO TYPE
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+; START OF NEW POTATO TYPE
+
+
+to fulfillContracts_purpleConventionalFresh [ sellers buyers ] 
+  
+ask sellers[
+    let col-id id
+    let product-avail-to-sell potatoes-purple-conventional-fresh_inventory-current
+    let amount-exchanged 0
+    let price-exchanged 0
+    let price-tag 0
+
+    ask buyers[
+      let row-id id
+      
+      if check-entry potato-table_purple-conventional  row-id col-id POTATO_OUTSTANDING_QUANTITY POTATO_QUANTITY POTATO_SENT [
+        
+        ifelse check-bigger-than-entry potato-table_purple-conventional  row-id col-id POTATO_OUTSTANDING_QUANTITY product-avail-to-sell
+        
+        [ set amount-exchanged report-value potato-table_purple-conventional  row-id col-id POTATO_OUTSTANDING_QUANTITY 
+          if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+        [ set amount-exchanged product-avail-to-sell
+          if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+        
+          set price-exchanged report-value potato-table_purple-conventional  row-id col-id POTATO_PRICE
+        if debug-mode = true [ 
+          print " "
+          print "--------------------------------------------------------------"
+          print "price exchanged:" print price-exchanged ]
+
+          set price-tag (price-exchanged * amount-exchanged)
+          if debug-mode = true [
+            print "price tag:" print price-tag]
+
+          ;set buyer assets and inventory
+          if debug-mode = true [
+            print "buyer assets before:" print assets]
+          set assets (assets - price-tag)
+          if debug-mode = true [
+            print "buyer assets after:" print assets]
+          if debug-mode = true [
+            print "buyer inventory before:" print potatoes-purple-conventional-fresh_inventory-current]
+          set potatoes-purple-conventional-fresh_inventory-current (potatoes-purple-conventional-fresh_inventory-current + amount-exchanged)
+          if debug-mode = true [
+            print "buyer inventory after:" print potatoes-purple-conventional-fresh_inventory-current]
+
+          ;set seller assets and inventory
+          ask myself [
+            if debug-mode = true [
+              print "seller assets before:" print assets]
+            set assets (assets + price-tag)
+            if debug-mode = true [
+              print "seller assets after:" print assets]
+            if debug-mode = true [
+              print "seller inventory before:" print potatoes-purple-conventional-fresh_inventory-current]
+            set potatoes-purple-conventional-fresh_inventory-current (potatoes-purple-conventional-fresh_inventory-current - amount-exchanged)
+            if debug-mode = true [
+              print "seller inventory after:" print potatoes-purple-conventional-fresh_inventory-current
+              print " "
+              print "--------------------------------------------------------------"]
+           table_sum potato-table_purple-conventional  row-id col-id POTATO_SENT amount-exchanged debug-mode  
+           update-outstanding-quantity potato-table_purple-conventional  row-id col-id POTATO_OUTSTANDING_QUANTITY POTATO_QUANTITY POTATO_SENT
+          ]
+        ]
+    ]
+  ]
+  
+  if debug-mode = TRUE [
+    print "potato price table"
+    debugMatrix potato-table_purple-conventional  POTATO_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potato quantity table"
+    debugMatrix potato-table_purple-conventional  POTATO_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potatoes sent table"
+    debugMatrix potato-table_purple-conventional  POTATO_SENT ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potatoes outstanding quantity table"
+    debugMatrix potato-table_purple-conventional  POTATO_OUTSTANDING_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) ) ]
+
+end 
+
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+
+to fulfillContracts_purpleConventionalProcessed [ sellers buyers ] 
+  
+ask sellers[
+    let col-id id
+    let product-avail-to-sell potatoes-purple-conventional-processed_inventory-current
+    let amount-exchanged 0
+    let price-exchanged 0
+    let price-tag 0
+
+    ask buyers[
+      let row-id id
+      if check-entry potato-table_purple-conventional-processed row-id col-id POTATO_OUTSTANDING_QUANTITY POTATO_QUANTITY POTATO_SENT [
+        
+        ifelse check-bigger-than-entry potato-table_purple-conventional-processed row-id col-id POTATO_OUTSTANDING_QUANTITY product-avail-to-sell
+
+        [ set amount-exchanged report-value potato-table_purple-conventional-processed row-id col-id POTATO_OUTSTANDING_QUANTITY 
+          if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+        [ set amount-exchanged product-avail-to-sell
+          if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+        
+          set price-exchanged report-value potato-table_purple-conventional-processed row-id col-id POTATO_PRICE
+        if debug-mode = true [ print "price exchanged:" print price-exchanged ]
+
+          
+          set price-tag price-exchanged * amount-exchanged
+          set assets (assets - price-tag)
+          set potatoes-purple-conventional-processed_inventory-current (potatoes-purple-conventional-processed_inventory-current + amount-exchanged)
+          ask myself [
+            set assets (assets + price-tag)
+            set potatoes-purple-conventional-processed_inventory-current (potatoes-purple-conventional-processed_inventory-current - amount-exchanged)
+          ]
+        
+          table_sum potato-table_purple-conventional-processed row-id col-id POTATO_SENT amount-exchanged debug-mode  
+          update-outstanding-quantity potato-table_purple-conventional-processed row-id col-id POTATO_OUTSTANDING_QUANTITY POTATO_QUANTITY POTATO_SENT
+        ]
+    ]
+  ]
+  
+  if debug-mode = TRUE [
+    print "potato price table"
+    debugMatrix potato-table_purple-conventional-processed POTATO_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potato quantity table"
+    debugMatrix potato-table_purple-conventional-processed POTATO_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potatoes sent table"
+    debugMatrix potato-table_purple-conventional-processed POTATO_SENT ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potatoes outstanding quantity table"
+    debugMatrix potato-table_purple-conventional-processed POTATO_OUTSTANDING_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) ) ]
+
+end 
+
+
+; END OF THIS POTATO TYPE
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+; START OF NEW POTATO TYPE
+
+
+to fulfillContracts_purpleOrganicFresh [ sellers buyers ]
+  
+ask sellers[
+    let col-id id
+    let product-avail-to-sell potatoes-purple-organic-fresh_inventory-current
+    let amount-exchanged 0
+    let price-exchanged 0
+    let price-tag 0
+
+    ask buyers[
+      let row-id id
+      if check-entry potato-table_purple-organic  row-id col-id POTATO_OUTSTANDING_QUANTITY POTATO_QUANTITY POTATO_SENT [
+        
+        ifelse check-bigger-than-entry potato-table_purple-organic  row-id col-id POTATO_OUTSTANDING_QUANTITY product-avail-to-sell
+        [ set amount-exchanged report-value potato-table_purple-organic  row-id col-id POTATO_OUTSTANDING_QUANTITY 
+          if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+        [ set amount-exchanged product-avail-to-sell
+          if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+        
+          set price-exchanged report-value potato-table_purple-organic  row-id col-id POTATO_PRICE
+        if debug-mode = true [ 
+          print " "
+          print "--------------------------------------------------------------"
+          print "price exchanged:" print price-exchanged ]
+
+          
+          set price-tag (price-exchanged * amount-exchanged)
+          if debug-mode = true [
+            print "price tag:" print price-tag]
+
+          ;set buyer assets and inventory
+          if debug-mode = true [
+            print "buyer assets before:" print assets]
+          set assets (assets - price-tag)
+          if debug-mode = true [
+            print "buyer assets after:" print assets]
+          if debug-mode = true [
+            print "buyer inventory before:" print potatoes-purple-organic-fresh_inventory-current]
+          set potatoes-purple-organic-fresh_inventory-current (potatoes-purple-organic-fresh_inventory-current + amount-exchanged)
+          if debug-mode = true [
+            print "buyer inventory after:" print potatoes-purple-organic-fresh_inventory-current]
+
+          ;set seller assets and inventory
+          ask myself [
+            if debug-mode = true [
+              print "seller assets before:" print assets]
+            set assets (assets + price-tag)
+            if debug-mode = true [
+              print "seller assets after:" print assets]
+            if debug-mode = true [
+              print "seller inventory before:" print potatoes-purple-organic-fresh_inventory-current]
+            set potatoes-purple-organic-fresh_inventory-current (potatoes-purple-organic-fresh_inventory-current - amount-exchanged)
+            if debug-mode = true [
+              print "seller inventory after:" print potatoes-purple-organic-fresh_inventory-current
+              print " "
+              print "--------------------------------------------------------------"]
+           table_sum potato-table_purple-organic  row-id col-id POTATO_SENT amount-exchanged debug-mode  
+           update-outstanding-quantity potato-table_purple-organic  row-id col-id POTATO_OUTSTANDING_QUANTITY POTATO_QUANTITY POTATO_SENT
+          ]
+        ]
+    ]
+  ]
+  
+  if debug-mode = TRUE [
+    print "potato price table"
+    debugMatrix potato-table_purple-organic  POTATO_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potato quantity table"
+    debugMatrix potato-table_purple-organic  POTATO_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potatoes sent table"
+    debugMatrix potato-table_purple-organic  POTATO_SENT ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potatoes outstanding quantity table"
+    debugMatrix potato-table_purple-organic  POTATO_OUTSTANDING_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) ) ]
+
+end 
+
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+
+to fulfillContracts_purpleOrganicProcessed [ sellers buyers ]  
+  
+ask sellers[
+    let col-id id
+    let product-avail-to-sell potatoes-purple-organic-processed_inventory-current
+    let amount-exchanged 0
+    let price-exchanged 0
+    let price-tag 0
+
+    ask buyers[
+      let row-id id      
+      if check-entry potato-table_purple-organic-processed row-id col-id POTATO_OUTSTANDING_QUANTITY POTATO_QUANTITY POTATO_SENT [
+                
+        ifelse check-bigger-than-entry potato-table_purple-organic-processed row-id col-id POTATO_OUTSTANDING_QUANTITY product-avail-to-sell
+       
+        [ set amount-exchanged report-value potato-table_purple-organic-processed row-id col-id POTATO_OUTSTANDING_QUANTITY 
+          if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+        [ set amount-exchanged product-avail-to-sell
+          if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+        
+          set price-exchanged report-value potato-table_purple-organic-processed row-id col-id POTATO_PRICE
+        if debug-mode = true [ print "price exchanged:" print price-exchanged ]
+
+          
+          set price-tag price-exchanged * amount-exchanged
+          set assets (assets - price-tag)
+          set potatoes-purple-organic-processed_inventory-current (potatoes-purple-organic-processed_inventory-current + amount-exchanged)
+
+          ask myself [
+            set assets (assets + price-tag)
+
+            set potatoes-purple-organic-processed_inventory-current (potatoes-purple-organic-processed_inventory-current - amount-exchanged)
+          ]
+        
+          table_sum potato-table_purple-organic-processed row-id col-id POTATO_SENT amount-exchanged debug-mode  
+          update-outstanding-quantity potato-table_purple-organic-processed row-id col-id POTATO_OUTSTANDING_QUANTITY POTATO_QUANTITY POTATO_SENT        
+        ]
+    ]
+  ]
+  
+  if debug-mode = TRUE [
+    print "potato price table"
+    debugMatrix potato-table_purple-organic-processed POTATO_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potato quantity table"
+    debugMatrix potato-table_purple-organic-processed POTATO_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potatoes sent table"
+    debugMatrix potato-table_purple-organic-processed POTATO_SENT ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potatoes outstanding quantity table"
+    debugMatrix potato-table_purple-organic-processed POTATO_OUTSTANDING_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) ) ]
+
+end 
+
+
+; END OF THIS POTATO TYPE
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+; START OF NEW POTATO TYPE
+
+
+to fulfillContracts_smallFresh [ sellers buyers ] 
+  
+ask sellers[
+    let col-id id
+    let product-avail-to-sell potatoes-russet-conventional-fresh-small_inventory-current
+    let amount-exchanged 0
+    let price-exchanged 0
+    let price-tag 0
+
+    ask buyers[
+      let row-id id
+      
+      if check-entry potato-table_russet-conventional-small  row-id col-id POTATO_OUTSTANDING_QUANTITY POTATO_QUANTITY POTATO_SENT [
+        ifelse check-bigger-than-entry potato-table_russet-conventional-small  row-id col-id POTATO_OUTSTANDING_QUANTITY product-avail-to-sell
+        
+        [ set amount-exchanged report-value potato-table_russet-conventional-small  row-id col-id POTATO_OUTSTANDING_QUANTITY 
+          if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+        [ set amount-exchanged product-avail-to-sell
+          if debug-mode = true [print "amount exchanged:" print amount-exchanged] ]
+        
+          set price-exchanged report-value potato-table_russet-conventional-small  row-id col-id POTATO_PRICE
+        if debug-mode = true [ 
+          print " "
+          print "--------------------------------------------------------------"
+          print "price exchanged:" print price-exchanged ]
+
+          
+          set price-tag (price-exchanged * amount-exchanged)
+          if debug-mode = true [
+            print "price tag:" print price-tag]
+
+          ;set buyer assets and inventory
+          if debug-mode = true [
+            print "buyer assets before:" print assets]
+          set assets (assets - price-tag)
+          if debug-mode = true [
+            print "buyer assets after:" print assets]
+          if debug-mode = true [
+            print "buyer inventory before:" print potatoes-russet-conventional-fresh-small_inventory-current]
+          set potatoes-russet-conventional-fresh-small_inventory-current (potatoes-russet-conventional-fresh-small_inventory-current + amount-exchanged)
+          if debug-mode = true [
+            print "buyer inventory after:" print potatoes-russet-conventional-fresh-small_inventory-current]
+
+          ;set seller assets and inventory
+          ask myself [
+            if debug-mode = true [
+              print "seller assets before:" print assets]
+            set assets (assets + price-tag)
+            if debug-mode = true [
+              print "seller assets after:" print assets]
+            if debug-mode = true [
+              print "seller inventory before:" print potatoes-russet-conventional-fresh-small_inventory-current]
+            set potatoes-russet-conventional-fresh-small_inventory-current (potatoes-russet-conventional-fresh-small_inventory-current - amount-exchanged)
+            if debug-mode = true [
+              print "seller inventory after:" print potatoes-russet-conventional-fresh-small_inventory-current
+              print " "
+              print "--------------------------------------------------------------"]
+           table_sum potato-table_russet-conventional-small  row-id col-id POTATO_SENT amount-exchanged debug-mode  
+           update-outstanding-quantity potato-table_russet-conventional-small  row-id col-id POTATO_OUTSTANDING_QUANTITY POTATO_QUANTITY POTATO_SENT
+          ]
+        ]
+    ]
+  ]
+
+  ; one random potato farmer is the beneficiary of the price premium from short supply chains during every contracting period 
+  if sellers = potato_farmers and potato-scenario = "small-potatoes" [  
+    let price-premium ( potato-conventional-russet-small_gfpp-price-farmgate-avg - potato-conventional-russet-small_price-farmgate-avg )
+    let dps-potatoes [potatoes-russet-conventional-fresh-small_inventory-maximum / 3] of one-of dps_buyers
+    let price-gains ( dps-potatoes * price-premium ) 
+    ask one-of potato_farmers [ 
+      set assets ( assets + price-gains )
+    ]
+  ] 
+    
+  if debug-mode = TRUE [
+    print "potato price table"
+    debugMatrix potato-table_russet-conventional-small  POTATO_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potato quantity table"
+    debugMatrix potato-table_russet-conventional-small  POTATO_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potatoes sent table"
+    debugMatrix potato-table_russet-conventional-small  POTATO_SENT ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print "potatoes outstanding quantity table"
+    debugMatrix potato-table_russet-conventional-small  POTATO_OUTSTANDING_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) ) ]
+
+end 
+
+

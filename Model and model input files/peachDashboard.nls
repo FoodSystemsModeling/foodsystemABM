@@ -1,0 +1,533 @@
+extensions [ matrix table GIS ]
+
+
+__includes [  "peachContractNegotiation.nls" "peachContractFulfillment.nls"  "peachResetStorage.nls"]  
+
+
+to reset-promised-amounts-peaches
+
+  ask peach_farmers [
+    set peaches-conventional_promised 0
+    set peaches-organic_promised 0 
+    set peaches-seconds_promised 0 ]
+
+  ask peach_processors [
+    set peaches-seconds_my-incoming-total 0
+    set peaches-iqf_promised 0 ]
+
+  ask distributors [
+    set peaches-out-of-state_my-incoming-total 0
+    set peaches-out-of-state_promised 0 
+
+  ]
+  ask dps_buyers [ 
+    set peaches-out-of-state_my-incoming-total 0    
+    set peaches-conventional_my-incoming-total 0    
+    set peaches-organic_my-incoming-total 0     
+    set peaches-seconds_my-incoming-total 0     
+    set peaches-iqf_my-incoming-total 0 
+    
+  ] 
+
+end
+
+
+to reset-tables-peaches
+  
+    table:clear peach-table_conventional
+    table:clear peach-table_organic
+  
+end
+
+
+to profitability-check-peaches
+ask peach_farmers [
+    let predicted-org-profit 0
+    let predicted-conv-profit 0
+
+    if farm-transitioning = 1 [
+      updateTls peach_farmers
+      transition-patches-peaches
+    ]
+
+    if farm-transitioning = 0
+    [ 
+      ;basic-profitability-calculation
+      let estimated-conv-yield 2.20462 * (mean [peach-conventional-mean-yield] of patches with [farmer = [farm-id] of myself] * hectares-farmed-peaches)  ;; 1 kg = 2.20462 lbs. so the above shows the yield in lbs.
+      let conventional-revenue-for-conv-calc (estimated-conv-yield * peach-conventional_price-farmgate-wholesale-avg * organic-planning-horizon)
+      let acres-farmed-peaches (hectares-farmed-peaches * 2.471)  ; 1 ha = 2.471 acres
+      let conventional-costs (acres-farmed-peaches * peach-conventional_cost-input-per-acre * organic-planning-horizon)
+       ; ^ running into same hectares vs. lbs for input price issue from other parts of the model
+      set predicted-conv-profit (conventional-revenue-for-conv-calc - conventional-costs)
+
+      ;organic-profitability-calculation
+      let estimated-org-yield 2.20462 * (mean [peach-organic-mean-yield] of patches with [farmer = [farm-id] of myself] * hectares-farmed-peaches)
+      let conventional-revenue-for-org-calc (estimated-org-yield * peach-organic_price-farmgate-wholesale-avg * 3)  ; get organic yields even though getting conventional price per lb.
+      let organic-revenue (estimated-org-yield * peach-organic_price-farmgate-wholesale-avg * (organic-planning-horizon - 3))
+      let organic-costs (acres-farmed-peaches * peach-organic_cost-input-per-acre * organic-planning-horizon)
+      ; ^ running into same hectares vs. lbs for input price issue from other parts of the model
+      set predicted-org-profit (conventional-revenue-for-org-calc + organic-revenue - organic-costs)
+
+      if (farm-size = "small") or (farm-size = "medium")
+        [ ifelse predicted-org-profit > predicted-conv-profit
+
+          [ ;print "organic profitable"
+            updateTls peach_farmers
+            transition-patches-peaches
+          ]
+          [ ;print "organic unprofitable"
+            set transition-likelihood-score (transition-likelihood-score - (.025 * transition-likelihood-score) )
+            updateTls peach_farmers
+            transition-patches-peaches
+          ]
+        ]
+
+        if farm-size = "large"
+          [ if predicted-org-profit > predicted-conv-profit
+            [ ;print "large profitable"
+;              let my-patches patches with [ farmer = [ farm-id ] of myself ]
+              let patches-conventional my-patches with [ certified-organic =  0  and in-organic-transition = 0 ]
+              let conversion-patches n-of 1 patches-conventional
+              ask conversion-patches [
+                set in-organic-transition 1
+              set organic-conversion-tracker 1 ]
+              set farm-transitioning 1
+            ]
+           ;don't transition anything if not profitable: just end procedure
+        ]
+      ]
+    ]
+end
+
+
+
+
+to transition-patches-peaches
+
+  ask peach_farmers [
+
+    ;transition into organic
+    if transition-likelihood-score >= .5 [
+      let patches-organic my-patches with [ certified-organic = 1 ]
+      let patches-conventional my-patches with [ certified-organic =  0  and in-organic-transition = 0 ]
+
+      if ( count patches-conventional ) > 0 [
+        let patches-org count patches-organic
+        let patches-all count my-patches
+        let organic-percentage ( patches-org / patches-all)
+
+        ; once a farmer reaches 25% of land in organic production and they meet TLS score, they convert the rest of the their land to organic
+        ; if they are still below 25% then they transition only one patch to organic
+        ifelse organic-percentage > .25
+          [ ask patches-conventional [
+            set in-organic-transition 1
+            set organic-conversion-tracker 1
+        ] ]
+          [ let conversion-patches n-of 1 patches-conventional
+            ask conversion-patches [
+              set in-organic-transition 1
+              set organic-conversion-tracker 1
+          ]
+        ]
+      set farm-transitioning 1
+      ]
+    ]
+
+    ;transition out of organic
+    if (transition-likelihood-score < .5) and ((farm-size = "large") or ((farm-size = "medium") and (alternative-farmer = 0)) or ((farm-size = "small") and (fully-organic = 0)) or (((farm-size = "medium") and (alternative-farmer = 1 )) and (fully-organic = 0)))
+    [
+;      let my-patches patches with [ farmer = [ farm-id ] of myself ]
+      let patches-organic my-patches with [ certified-organic = 1 ]
+      let patches-conventional my-patches with [ certified-organic =  0  and in-organic-transition = 0 ]
+      ask patches-organic [
+        set in-organic-transition 0
+        set organic-conversion-tracker 0
+        set certified-organic 0 ]
+      set grows-organic 0
+      set farm-transitioning 0
+    ]
+   ]
+end
+
+
+to update-organic-peaches
+
+  ask patches with [ county-id = 2 or county-id = 4 ] [
+    if in-organic-transition = 1 [
+      into-organic-peaches ] ]
+
+end
+
+
+to into-organic-peaches
+
+; transition from conventional to organic
+  set organic-conversion-tracker ( organic-conversion-tracker + 1 )
+  if organic-conversion-tracker = 4 [
+    set certified-organic 1
+    set organic-conversion-tracker 0
+    set in-organic-transition 0
+  ]
+
+  let my-peach-farmer peach_farmers with [ farm-id = [farmer] of myself]
+  ask my-peach-farmer [
+    let patches-organic my-patches with [ certified-organic = 1 ]
+    let patches-conventional my-patches with [ certified-organic =  0  and in-organic-transition = 0 ]
+    ifelse patches-organic = my-patches
+              [set fully-organic 1]
+              [set fully-organic 0]
+  ]
+
+end
+
+
+to update-display-peaches
+
+  if display-style = "farm ownership"
+  [
+    ask patches with [ occupied = 1 ]
+    [ set pcolor farmer ]
+  ]
+
+  if display-style = "organic vs conventional"
+  [
+    ask patches with [ occupied = 1 ]
+    [
+      if certified-organic = 0 [ set pcolor 36 ]
+      if organic-conversion-tracker = 1 [ set pcolor 67 ]
+      if organic-conversion-tracker = 2 [ set pcolor 56 ]
+      if organic-conversion-tracker = 3 [ set pcolor 54 ]
+      if certified-organic = 1 [ set pcolor 62 ]
+    ]
+    ask peach_farmers with ( [ fully-organic = 1 and ( farm-size = "small" or ( farm-size = "medium" and alternative-farmer = 1 ) ) ] )
+    [
+;      let my-patches patches with [ farmer = [ farm-id ] of myself ]
+      ask my-patches [set pcolor 45 ]
+    ]
+  ]
+
+  if display-style = "bad vs good year"
+  [
+    ask patches with [ occupied = 1 ] [
+      set pcolor 5
+      if ( peach-conventional-current-yield > 1.2 * peach-conventional-mean-yield ) [ set pcolor 125 ]
+      if ( peach-conventional-current-yield <= 1.2 * peach-conventional-mean-yield ) [ set pcolor 135 ]
+      if ( peach-conventional-current-yield <= 1.1 * peach-conventional-mean-yield ) [ set pcolor 63 ]
+      if ( peach-conventional-current-yield <= 1 * peach-conventional-mean-yield ) [ set pcolor 66 ]
+      if ( peach-conventional-current-yield <= .9 * peach-conventional-mean-yield ) [ set pcolor 45 ]
+      if ( peach-conventional-current-yield <= .8 * peach-conventional-mean-yield ) [ set pcolor 43 ]
+      if ( peach-conventional-current-yield <= .7 * peach-conventional-mean-yield ) [ set pcolor 27 ]
+      if ( peach-conventional-current-yield <= .6 * peach-conventional-mean-yield ) [ set pcolor 25 ]
+      if ( peach-conventional-current-yield <= .5 * peach-conventional-mean-yield ) [ set pcolor 23 ]
+      if ( peach-conventional-current-yield <= .4 * peach-conventional-mean-yield ) [ set pcolor 17 ]
+      if ( peach-conventional-current-yield <= .3 * peach-conventional-mean-yield ) [ set pcolor 15 ]
+      if ( peach-conventional-current-yield <= .2 * peach-conventional-mean-yield ) [ set pcolor 12 ]
+    ]
+  ]
+
+  if display-style = "transition likelihood score"
+  [
+    ask peach_farmers
+    [ ; let my-patches patches with [ farmer = [ farm-id ] of myself ]
+      if ( transition-likelihood-score <  1 )  [ ask my-patches [set pcolor 104 ] ]
+      if ( transition-likelihood-score < .9 ) [ ask my-patches [set pcolor 62 ] ]
+      if ( transition-likelihood-score < .8 ) [ ask my-patches [set pcolor 63 ] ]
+      if ( transition-likelihood-score < .7 ) [ ask my-patches [set pcolor 65 ] ]
+      if ( transition-likelihood-score < .6 ) [ ask my-patches [set pcolor 67 ] ]
+      if ( transition-likelihood-score < .5 ) [ ask my-patches [set pcolor 17 ] ]
+      if ( transition-likelihood-score < .4 ) [ ask my-patches [set pcolor 16 ] ]
+      if ( transition-likelihood-score < .3 ) [ ask my-patches [set pcolor 15 ] ]
+      if ( transition-likelihood-score < .2 ) [ ask my-patches [set pcolor 14 ] ]
+      if ( transition-likelihood-score < .1 ) [ ask my-patches [set pcolor 13 ] ]
+    ]
+  ]
+
+  if display-style = "farm size/ideology"
+  [
+    ask peach_farmers
+    [ ; let my-patches patches with [ farmer = [ farm-id ] of myself ]
+      if ( farm-size = "small" and alternative-farmer = 0 )  [ ask my-patches [set pcolor 63 ] ]
+      if ( farm-size = "small" and alternative-farmer = 1 ) [ ask my-patches [set pcolor 67 ] ]
+      if ( farm-size = "medium" and alternative-farmer = 0 ) [ ask my-patches [set pcolor 94 ] ]
+      if ( farm-size = "medium" and alternative-farmer = 1 ) [ ask my-patches [set pcolor 97 ] ]
+      if ( farm-size = "large" and alternative-farmer = 0 ) [ ask my-patches [set pcolor 14 ] ]
+      if ( farm-size = "large" and alternative-farmer = 1 ) [ ask my-patches [set pcolor 17 ] ]
+    ]
+  ]
+
+end
+
+to set-contracts-peaches
+    ;  farmers to outsource packer
+  setContracts_peachesConventional  peach_farmers  packer 1 FALSE
+  setContracts_peachesOrganic  peach_farmers  packer 1 FALSE
+  setContracts_peachesSeconds peach_farmers packer 1 FALSE
+
+  ;  outsource packer to distributors
+  setContracts_peachesConventional  packer  distributors number-distributors FALSE
+  setContracts_peachesOrganic  packer  distributors number-distributors FALSE
+  setContracts_peachesSeconds packer distributors number-distributors FALSE
+
+  ;  farmers to distributors
+  setContracts_peachesConventional  peach_farmers  distributors number-distributors FALSE
+  setContracts_peachesOrganic  peach_farmers  distributors number-distributors FALSE
+  setContracts_peachesSeconds peach_farmers distributors number-distributors FALSE
+
+  ;  farmers to alt markets
+  setContracts_peachesConventional  peach_farmers  peach_altmarks number-peach_altmarks FALSE
+  setContracts_peachesOrganic  peach_farmers  peach_altmarks number-peach_altmarks FALSE
+
+  
+  if peach-scenario = "baseline" [
+  ; nothing because dps-purchases-out-of-state-peaches procedure is called
+  ]
+  
+  if peach-scenario = "IQF" [
+
+    setContracts_peachesSeconds  peach_farmers  peach_processors number-peach_processors FALSE
+    setContracts_peachesIqf peach_processors dps_buyers number-dps_buyers FALSE
+  ]
+    
+  if peach-scenario = "CO-fresh" [
+    setContracts_peachesConventional  peach_farmers  dps_buyers number-dps_buyers FALSE
+    ]
+
+end
+
+to dps-purchases-out-of-state-peaches
+  
+  let buyer one-of dps_buyers 
+  let seller one-of distributors 
+    
+  let amount-exchanged [ peaches-out-of-state_inventory-maximum - peaches-out-of-state_inventory-current ] of buyer
+    
+  ; price the distributor pays for out-of-state peaches (inventory set at beginning so distributor won't run out during 10 year model run)
+  let price-paid-for-peaches-by-distrib ( random-normal peach-out-of-state_price-distributor-pays-avg peach-out-of-state_price-distributor-pays-stdev )
+  let peaches-cost ( price-paid-for-peaches-by-distrib * amount-exchanged)
+    
+  ; price the distributor receives for out-of-state peaches 
+  let price-exchanged ( random-normal peach-out-of-state_price-distributor-receives-avg peach-out-of-state_price-distributor-receives-stdev )
+  let price-tag (amount-exchanged * price-exchanged)
+    
+  ask seller [ 
+    set assets ( assets - peaches-cost ) 
+    set assets (assets + price-tag) 
+    set peaches-out-of-state_inventory-current ( peaches-out-of-state_inventory-current - amount-exchanged ) 
+  ] 
+    
+  ask buyer [ 
+    set assets (assets - price-tag ) 
+    set peaches-out-of-state_inventory-current ( peaches-out-of-state_inventory-current + amount-exchanged )
+  ]
+  
+end 
+
+
+to produce-peaches
+
+  set-peach-yield ; annual, planning stage
+  update-bad-production-year-peach
+  calculate-annual-production-peaches ; annual, harvest stage
+  update-inventories-peaches
+
+end
+
+
+to set-peach-yield ; ALL DATA NEEDS TO BE UPDATED ONCE FIGURE OUT ANNUAL VARIATION -- for now just using a distribution
+
+  let occupied-peach-patches patches with [ ( county-id = 2 or county-id = 4 ) and occupied = 1]
+  ask occupied-peach-patches [
+    ;these units are lbs./hectare ;see peach volume calcs doc in dropbox for data sources (NASS)
+    ;can replace with code below (will need to modify) once we have DSSAT or other dynamic/spatially explicit data available
+    set peach-conventional-current-yield (random-normal 22338 2770) 
+    set peach-organic-current-yield (random-normal 24858 2770)
+  ]
+  
+;  set peach-data-year 1980 + random 39
+;
+;  let file-name-canela (word peach-data-year "_canela.asc")
+;  set conventional-load gis:load-dataset file-name-canela
+;  gis:apply-raster conventional-load peach-conventional-current-yield
+;
+;  let file-name-organic (word peach-data-year "_canela_org.asc")
+;  set organic-load gis:load-dataset file-name-organic
+;  gis:apply-raster organic-load peach-organic-current-yield
+ 
+;  ask patches with [ county-id = 2 or county-id = 4 ]
+; [
+;    ifelse peach-conventional-current-yield >= 0; sets all non-producing patches to 0, otherwise they are NaN. Also see next set of commands re: NaN
+;    []
+;    [
+;      set peach-conventional-current-yield 0
+;      set peach-organic-current-yield 0
+;    ]
+;  ]
+;
+;  ask patches with [ county-id = 2 or county-id = 4 ]; this fixes the situation where some years from DSSAT seem to produce NaN for a small number of patches. I think this is a DSSAT error
+;  [
+;    if peach-conventional-current-yield = 0 and occupied = 1
+;    [
+;      ;using national averages for peach yield for 2007-2019
+;      set peach-conventional-current-yield random-normal ;mean [peach-conventional-current-yield] of patches with [peach-yes-no = 1] ;CHANGE TO PEACH DATA WHEN AVAILABLE
+;      set peach-organic-current-yield random-normal ;mean [peach-organic-current-yield] of patches with [peach-yes-no = 1] ;CHANGE TO PEACH DATA WHEN AVAILABLE
+;    ]
+;  ]
+  
+
+end
+
+to update-bad-production-year-peach
+
+  ask peach_farmers [
+    set last-year-mediocre-production-year this-year-mediocre-production-year
+    set last-year-bad-production-year this-year-bad-production-year
+
+    set this-year-mediocre-production-year 0
+    set this-year-bad-production-year 0
+
+    ; if production of any variety is below 60% of its mean yield, the year is considered a "bad" production year --> used in TLS update                                  
+    
+    ; mediocre production year
+    if (.7 * peach-conventional-mean-yield < peach-conventional-current-yield) and (peach-conventional-current-yield < 1 * peach-conventional-mean-yield)
+        [set this-year-mediocre-production-year 1]
+    if (.7 * peach-organic-mean-yield < peach-organic-current-yield) and (peach-organic-current-yield < 1 * peach-organic-mean-yield)
+        [set this-year-mediocre-production-year 1]
+   
+
+    ; bad production year
+    if peach-conventional-current-yield < .7 * peach-conventional-mean-yield
+        [set this-year-bad-production-year 1]
+    if peach-organic-current-yield < .7 * peach-organic-mean-yield
+        [set this-year-bad-production-year 1]
+   
+    ]
+
+end
+
+
+
+to calculate-annual-production-peaches
+  
+  ask peach_farmers[
+      ;flag this procedure as a spot where we can cut time by using more temp variables
+      set my-patches patches with [farmer = [farm-id] of myself] 
+      let my-peach-patches my-patches ;assuming no rotation for peaches 
+      let my-organic-patches-for-costs my-peach-patches with [ certified-organic = 1 or in-organic-transition = 1 ]
+      let my-organic-patches-for-production my-peach-patches with [ certified-organic = 1 ]
+      let my-conventional-patches-for-costs my-peach-patches with [ certified-organic = 0 ]
+      let my-conventional-patches-for-production my-peach-patches with [ certified-organic = 0 or in-organic-transition = 1 ]
+    
+      ; these calculations count the hectares each farmer has in the two peach products--used in input cost calcs.
+      set my-conventional-hectares-for-costs (count my-conventional-patches-for-costs with [remainder-patch = 0] * 100) + 
+      (count my-conventional-patches-for-costs with [remainder-patch = 1] * (hectares-farmed-peaches - (100 * (patches-in-peaches - 1))))
+        
+      set my-organic-hectares-for-costs (count my-organic-patches-for-costs with [remainder-patch = 0] * 100) + 
+      (count my-organic-patches-for-costs with [remainder-patch = 1] * (hectares-farmed-peaches - (100 * (patches-in-peaches - 1))))
+        
+      ;change farmer cash to reflect input costs 
+      set assets (assets - (my-conventional-hectares-for-costs * (peach-conventional_cost-input-per-acre / .4047)))
+      set assets (assets - (my-organic-hectares-for-costs * (peach-organic_cost-input-per-acre / .4047)))
+      
+      ; each farmer's annual production by totaling production of individual patches calculated here (some variation due to distribution used) 
+      ;already in lbs. above so taking out 2.20462 kg to lb. conversion factor
+      set conventional-current-production (((sum [peach-conventional-current-yield] of my-conventional-patches-for-production with [remainder-patch = 0] * 100) 
+      + (sum [peach-conventional-current-yield] of my-conventional-patches-for-production with [remainder-patch = 1] * (hectares-farmed-peaches - (100 * (patches-in-peaches - 1))))))
+
+      set organic-current-production (((sum [peach-organic-current-yield] of my-organic-patches-for-production with [remainder-patch = 0] * 100 ) 
+      + (sum [peach-conventional-current-yield] of my-organic-patches-for-production with [remainder-patch = 1] * (hectares-farmed-peaches - (100 * (patches-in-peaches - 1))))))
+
+    
+      set peaches-conventional_inventory-current ( peaches-conventional_inventory-current + conventional-current-production)
+      set peaches-organic_inventory-current ( peaches-organic_inventory-current + organic-current-production)
+    
+  ]
+end
+
+
+to update-inventories-peaches
+
+;; UPDATE FARMER INVENTORY, including 10% of production as seconds
+
+   ; originally wrote code so peaches would be grown and move through supply chain on weekly basis in 9-month growing season since peaches have such a short shelf life
+   ; turned off for simplicity but left code in case want to use later
+  
+  ; assume all seconds are conventional 
+  
+  ask peach_farmers [
+
+    let peaches-seconds ( peaches-conventional_inventory-current * peaches-percent-seconds )
+    set peaches-conventional_inventory-current ( peaches-conventional_inventory-current - peaches-seconds )
+   ; set peaches-conventional_weekly-inventory ( peaches-conventional_inventory-current / 9 )
+    set peaches-seconds_inventory-current peaches-seconds
+   ; set peaches-seconds_weekly-inventory ( peaches-seconds_inventory-current / 9 )
+; for now all peaches will get contracted at once instead of weekly -- can change this later
+    
+    set peaches-conventional_passthrough-annual peaches-conventional_inventory-current
+    set peaches-organic_passthrough-annual peaches-organic_inventory-current
+    set peaches-seconds_passthrough-annual peaches-seconds_inventory-current
+   
+    ]
+
+end
+
+to update-peach-production
+  set peach-conventional_production-annual sum [peaches-conventional_inventory-current] of peach_farmers 
+  set peach-conventional_production-total-model-run (peach-conventional_production-total-model-run + peach-conventional_production-annual)
+  set peach-organic_production-annual sum [peaches-organic_inventory-current] of peach_farmers 
+  set peach-organic_production-total-model-run (peach-organic_production-total-model-run + peach-organic_production-annual)
+  set peach-seconds_production-annual sum [peaches-seconds_inventory-current] of peach_farmers 
+  set peach-seconds_production-total-model-run (peach-seconds_production-total-model-run + peach-seconds_production-annual)
+end 
+
+
+to fulfill-contracts-peaches
+
+  ;  farmers to outsource packer
+  fulfillContracts_peachesConventional  peach_farmers  packer
+  fulfillContracts_peachesOrganic  peach_farmers  packer
+  fulfillContracts_peachesSeconds peach_farmers packer
+
+  ;  outsource packer to distributors
+  fulfillContracts_peachesConventional  packer  distributors
+  fulfillContracts_peachesOrganic  packer  distributors
+  fulfillContracts_peachesSeconds packer distributors
+
+  ;  farmers to distributors
+  fulfillContracts_peachesConventional  peach_farmers  distributors
+  fulfillContracts_peachesOrganic  peach_farmers  distributors
+  fulfillContracts_peachesSeconds peach_farmers distributors
+
+  ;  farmers to alt markets
+  fulfillContracts_peachesConventional  peach_farmers  peach_altmarks
+  fulfillContracts_peachesOrganic  peach_farmers  peach_altmarks
+
+  ; assume seconds are wasted in non-IQF scenario 
+  if peach-scenario = "baseline" [
+    
+  ]
+  
+  if peach-scenario = "IQF" [
+
+    fulfillContracts_peachesSeconds  peach_farmers  peach_processors
+    fulfillContracts_peachesIqf peach_processors dps_buyers
+  ]
+    
+  if peach-scenario = "CO-fresh" [
+    fulfillContracts_peachesConventional  peach_farmers  dps_buyers
+    ;fulfillContracts_peachesOrganic  peach_farmers  dps_buyers
+    ]
+
+
+end
+
+
+to reset-storage-peaches
+
+  reset-storage_peaches peach_farmers
+  reset-storage_peaches peach_altmarks
+  reset-storage_peaches peach_processors
+  reset-storage_peaches distributors
+  reset-storage_peaches dps_buyers
+
+end
+

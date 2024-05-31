@@ -1,0 +1,394 @@
+ extensions [ table GIS ]
+
+
+__includes [ "beefResetStorage.nls" ] 
+
+
+to set-precip
+  ;set beef-data-year 1981 + random 29
+  
+  ; hardwire yield data year so can set seed randomly for other model behavior and maintain some stability in yields
+  if year = 1 [ set beef-data-year 2001 ]
+  if year = 2 [ set beef-data-year 2002 ]
+  if year = 3 [ set beef-data-year 2003 ]
+  if year = 4 [ set beef-data-year 2004 ]
+  if year = 5 [ set beef-data-year 2005 ]
+  if year = 6 [ set beef-data-year 2006 ]
+  if year = 7 [ set beef-data-year 2007 ]
+  if year = 8 [ set beef-data-year 2008 ]
+  if year = 9 [ set beef-data-year 2009 ]
+  if year = 10 [ set beef-data-year 2010 ]
+  if year = 11 [ set beef-data-year 2001 ]
+  
+  
+  let file-name (word "precip_" beef-data-year ".asc")
+  set precip-year gis:load-dataset file-name; load random yearly precip from 1981-2010 PRISM data
+  gis:apply-raster precip-year year-precip
+  ask patches with [county-beef = 1]  
+  [set precip-pct year-precip / average-precip ]
+  ask beef_ranchers
+  [
+    set year-rainfall-ratio (mean [year-precip] of patches with [farmer = [farm-id] of myself]) / (ranch-average-precip)
+    set cows-that-calved round (total-cows * 0.90)
+  ]
+end
+
+
+to set-forage
+  ask patches with [county-beef = 1 and irrigated = 0]
+  [
+    set ann-forage-production mean-forage-production * precip-pct
+  ]
+end
+
+
+to update-display-beef
+  
+  if display-style = "beef: public-private"
+     [
+        ask patches with [county-beef = 1]
+            [
+              if private-public = 0 [set pcolor 47]; Private land
+              if private-public = 1 [set pcolor 38]; Public land
+              if private-public = 3 [set pcolor white]; Outside counties
+             ]
+     ]
+
+  if display-style = "beef: grazable"
+     [
+        ask patches with [county-beef = 1]
+            [
+              if grazable = 1 [set pcolor 8]; Not Grazable
+              if grazable = 2 [set pcolor 67]; Grazable
+             ]
+  ]
+
+  if display-style = "beef: forage"
+     [
+        ask patches with [county-beef = 1]
+              [set pcolor scale-color green (mean-forage-production / 100) 1000 0 ]
+     ]
+
+  if display-style = "beef: irrigated"
+   [
+      ask patches with [county-beef = 1]
+      [
+      if irrigated = 1 [set pcolor blue]
+      if irrigated = 0 [set pcolor white]
+   ]
+  ]
+
+  if display-style = "beef: precip"
+   [
+      ifelse year = 0
+      []
+       [
+        ask patches with [county-beef = 1]
+      [
+       ifelse precip-pct < 1
+        [set pcolor scale-color red precip-pct 0 1]
+        [set pcolor scale-color green precip-pct 2 1]
+      ]
+      ]
+  ]
+
+
+    if display-style = "farm ownership"
+  [
+    ask patches with [ occupied = 1 ]
+    [ set pcolor farmer ]
+  ]
+
+
+
+end
+
+
+to reset-storage-beef
+
+  reset-storage_beef beef_ranchers
+  reset-storage_beef beef_packing-houses
+  reset-storage_beef distributors
+  reset-storage_beef dps_buyers
+
+end
+
+; deleted reset-promised-amounts-beef because only spot market used, not contracting
+
+; deleted updateTls procedures and into organic procedures because different for beef than othe products, could add in complexity if wanted 
+
+; deleted set and fulfill contracts procedures, as well as associated APIs because cull beef sold on spot market 
+
+; deleted bad production year update for tls because not used in the beef version of tls 
+
+to produce-beef 
+  set-precip
+  set-forage
+  ranch-stats
+end
+
+
+to ranch-stats                                           ; All values are not set depending upon the pathway through based on year-rainfall-ratio.  Is that ok?  RBB 06/18/2021
+ 
+  ; streamline variable names for prices 
+  ; get rid of contracting in beef model - conventional to large packing house, specialty to small packing house
+  ; for specialty products, get rid of distributor step
+  
+  ask beef_ranchers
+    [
+     if year-rainfall-ratio <= 0.8
+      [
+        set year-cull-cows round (total-cows * 0.20)     ; cull more aggressively in a dry year 
+        ; OLD set year-cull-cows round (total-cows * 0.2); cull more aggressively in a dry year
+        ;if rancher participating in scenario, how many of cull cows will be included in scenario?
+        ; if rancher scenario = xxx then set number culled cows to aw approved according to formula
+        ; limit # or relationship based
+        ; all or nothing for a given ranch about what characteristics their culled cows have (new rancher variable)
+        ; process to determine which ranchers enroll in which scenario
+        ; if this ranch is animal welfare ranch then all culled to animal welfare cows
+        ; then set cull cow price to aw price (but only for number that are sold as aw)
+        ; how to calculate number of cows specialty product requested by product
+        set year-calves-weaned round (cows-that-calved * 0.89) ; 91% weaning ratio, NDSU CHAPS benchmarks, slightly lower for drought
+        set replacement-cows round (year-cull-cows * 0.6) ; only replace 60% in a bad year
+        ; set assets ( assets - beef-conventional_cost_input_per_head * replacement-cows )          ; Tracking changes in assets involving purchase of replacement cows is misleading.  The model is relevant to culled cows only at this time.
+        set year-calf-sale round (year-calves-weaned - replacement-cows)
+        set total-cows round (total-cows - year-cull-cows + replacement-cows)
+        set cows-that-calved round (total-cows * 0.9) ; 90% calving rate
+       ]
+
+      if year-rainfall-ratio > 0.8 and year-rainfall-ratio <= 1.1; maintain in a normal year won't come back up from drought
+      [
+        set year-cull-cows round (total-cows * 0.14)    
+        set year-calves-weaned round (cows-that-calved * 0.91) ; 91% weaning ratio, NDSU CHAPS benchmarks
+        set replacement-cows year-cull-cows
+        ; set assets ( assets - beef-conventional_cost_input_per_head * replacement-cows )          ; Tracking changes in assets involving purchase of replacement cows is misleading.  The model is relevant to culled cows only at this time.
+        set year-calf-sale round (year-calves-weaned - replacement-cows)
+        set total-cows round (total-cows - year-cull-cows + replacement-cows)
+        if total-cows > total-cows-baseline [set total-cows total-cows-baseline]; rounding errors
+        set cows-that-calved round (total-cows * 0.9) ; 90% calving rate
+      ]
+
+      if year-rainfall-ratio > 1.1
+       [
+         set year-cull-cows round (total-cows * 0.14) 
+         set year-calves-weaned round (cows-that-calved * 0.91) ; 91% weaning ratio, NDSU CHAPS benchmarks
+         set replacement-cows round (total-cows-baseline - total-cows + year-cull-cows); will get back up to baseline in a good year, at expense of that year's calf crop
+         ; set assets ( assets - beef-conventional_cost_input_per_head * replacement-cows )          ; Tracking changes in assets involving purchase of replacement cows is misleading.  The model is relevant to culled cows only at this time.  
+         set year-calf-sale round (year-calves-weaned - replacement-cows)
+         set total-cows round (total-cows - year-cull-cows + replacement-cows)
+         set cows-that-calved round(total-cows * 0.9) ; 90% calving rate
+      ]
+      
+        
+      if beef-scenario = "baseline" [ set beef-conventional_passthrough-annual year-cull-cows ]
+      if beef-scenario = "grassfed" [ set beef-grassfed_passthrough-annual year-cull-cows ]
+      if beef-scenario = "colorado-source-id" [ set beef-colorado-source-id_passthrough-annual year-cull-cows ]
+      if beef-scenario = "animal-welfare" [ set beef-animal-welfare_passthrough-annual year-cull-cows ] 
+  ]
+  
+end
+
+to update-beef-production
+
+  ;update annual and total beef production counters based on calculate annual production procedure
+  set beef-conventional_production-annual (sum [year-cull-cows] of beef_ranchers ) * 1200
+  set beef-conventional_production-total-model-run (beef-conventional_production-total-model-run + beef-conventional_production-annual)
+  set beef-grassfed_production-annual ( sum [year-cull-cows] of beef_ranchers ) * 1200
+  set beef-grassfed_production-total-model-run (beef-grassfed_production-total-model-run + beef-grassfed_production-annual)
+  set beef-colorado-source-id_production-annual (sum [year-cull-cows] of beef_ranchers ) * 1200
+  set beef-colorado-source-id_production-total-model-run (beef-colorado-source-id_production-total-model-run + beef-colorado-source-id_production-annual)
+  set beef-animal-welfare_production-annual (sum [year-cull-cows] of beef_ranchers ) * 1200
+  set beef-animal-welfare_production-total-model-run (beef-animal-welfare_production-total-model-run + beef-animal-welfare_production-annual)
+
+end 
+
+to sell-beef-spot-market
+  
+; first beef packing houses figure out how many cows they need to purchase based on demand from dps
+; retail weight is 42% of live weight. the conversion factor to go in the reverse direction (lbs. requested by dps -> weight of live cows needed) is 2.38. instead of hardcoding this, i changed to the formula for the inverse of the conversion rate when
+  ;the packing house is deciding how many cows to purchase
+  
+  ; assume large packing house processes conventional beef            
+  ask beef_packing-houses with [small-size = 0] [
+    if beef-scenario = "baseline" [
+      set beef-needed ([beef-conventional_inventory-maximum - beef-conventional_inventory-current] of one-of dps_buyers)   
+    ]
+    if beef-scenario = "grassfed" [
+      set beef-needed 0
+    ]
+    if beef-scenario = "colorado-source-id" [
+      set beef-needed 0
+    ]
+    if beef-scenario = "animal-welfare" [
+      set beef-needed 0
+    ]
+    set cows-needed ceiling ( ( beef-needed * ( 1 / ground-beef-conversion-rate) ) / 1200 )     ; lbs. required by dps * 2.38 because retail weight is 42% of live animal weight after conversion to ground beef. assume 1200 lbs. / live animal
+  ]
+  
+  ; assume small packing houses processes beef for all specialty scenarios
+  ask beef_packing-houses with [small-size = 1] [
+    if beef-scenario = "baseline" [
+      set beef-needed 0 
+    ]
+    if beef-scenario = "grassfed" [
+      set beef-needed ([beef-grassfed_inventory-maximum - beef-grassfed_inventory-current] of one-of dps_buyers)
+    ]
+    if beef-scenario = "colorado-source-id" [
+      set beef-needed ([beef-colorado-source-id_inventory-maximum - beef-colorado-source-id_inventory-current] of one-of dps_buyers)
+    ]
+    if beef-scenario = "animal-welfare" [
+      set beef-needed ([beef-animal-welfare_inventory-maximum - beef-animal-welfare_inventory-current] of one-of dps_buyers)
+    ]
+    set cows-needed ceiling ( ( beef-needed * ( 1 / ground-beef-conversion-rate ) / 1200 ) )
+  ]           
+
+  
+; packing house keeps buying beef until amount promised fulfills cows needed
+  ; purchase beef from ranchers with highest tls score
+  ; price by weight but assume each cow 1200 lbs. 
+  ; product become specialty at the packing house level
+  
+  ; choose the packing house to interact with based on scenario, cows-needed set above based on scenario
+  ask beef_packing-houses with [cows-needed > 0] [ 
+    let cows-purchased 0 
+    
+    while [ ( cows-purchased < cows-needed ) and ( any? beef_ranchers with [ year-cull-cows > 0 ]) ] [ 
+      let cows-exchanged 0 
+      let price-exchanged 0 
+      let price-tag 0 
+      
+      let bidding-ranchers beef_ranchers with [year-cull-cows > 0 ]
+      let my-rancher max-one-of bidding-ranchers [ transition-likelihood-score ]      ; right now rancher is chosen based on tls and not price; could alter to include price as well 
+      
+      ; print [who] of my-rancher 
+      
+      ifelse cows-needed <= [ year-cull-cows ] of my-rancher 
+        [ set cows-exchanged cows-needed ] 
+        [ set cows-exchanged [ year-cull-cows ] of my-rancher ] 
+      
+      if beef-scenario = "baseline" [ set price-exchanged random-normal beef-conventional-live-weight_price-farmgate-avg beef-conventional-live-weight_price-farmgate-stdev ]
+      if beef-scenario = "grassfed" [ set price-exchanged random-normal beef-grassfed-live-weight_price-farmgate-avg beef-grassfed-live-weight_price-farmgate-stdev ]
+      if beef-scenario = "colorado-source-id" [ set price-exchanged random-normal beef-colorado-source-id-live-weight_price-farmgate-avg beef-colorado-source-id-live-weight_price-farmgate-stdev ]
+      if beef-scenario = "animal-welfare" [ set price-exchanged random-normal beef-animal-welfare-live-weight_price-farmgate-avg beef-animal-welfare-live-weight_price-farmgate-stdev ]
+      
+      set price-tag (cows-exchanged * 1200 * price-exchanged )  ; farmgate prices are per lb. so need number cows * lbs. * price per lb. = price per head
+      
+      set cows-purchased cows-purchased + cows-exchanged 
+      set cows-needed cows-needed - cows-exchanged 
+      set assets assets - price-tag
+
+      ; set inventory of packing house in lbs of ground beef; use conversion factor of 50% here      
+      if beef-scenario = "baseline" [ set beef-conventional_inventory-current ( beef-conventional_inventory-current + ((cows-exchanged * 1200) * ground-beef-conversion-rate )) ]
+      if beef-scenario = "grassfed" [ set beef-grassfed_inventory-current ( beef-grassfed_inventory-current + ((cows-exchanged * 1200) * ground-beef-conversion-rate) ) 
+      set beef-grassfed-passthrough beef-grassfed-passthrough + beef-grassfed_inventory-current]   ; need this? 
+      if beef-scenario = "colorado-source-id" [ set beef-colorado-source-id_inventory-current ( beef-colorado-source-id_inventory-current + ((cows-exchanged * 1200) * ground-beef-conversion-rate) ) ]
+      if beef-scenario = "animal-welfare" [ set beef-animal-welfare_inventory-current ( beef-animal-welfare_inventory-current + ((cows-exchanged * 1200) * ground-beef-conversion-rate )) ]
+        
+      ask my-rancher [ 
+        set assets assets + price-tag
+        set year-cull-cows year-cull-cows - cows-exchanged 
+      ]
+    ] 
+  ] 
+   
+  
+ ; -------------------------------------------------------- begin distributor  
+   if beef-scenario = "baseline" [ 
+    ask distributors [ 
+      let my-packing-house 0 
+      ; may need to add any? statements in here if getting error messages later
+      set my-packing-house beef_packing-houses with [ beef-conventional_inventory-current > 0 ] 
+      
+      let amount-exchanged 0 
+      let price-exchanged 0 
+      let price-tag 0 
+      
+      ;let dps-buyers-beef-needed 0 
+      let packing-house-beef-available 0 
+      
+      ;if beef-scenario = "baseline" [ set dps-buyers-beef-needed beef-conventional_inventory-maximum - beef-conventional_inventory-current ] 
+            
+      set packing-house-beef-available [ beef-conventional_inventory-current ] of my-packing-house 
+    
+      ; assume distributor purchases all beef conventional packing house has available 
+      ; will need to change this when there's beef other than just culled cows moving through the system
+      set amount-exchanged item 0 (packing-house-beef-available)
+      
+  ;    ifelse dps-buyers-beef-needed <= item 0 (packing-house-beef-available) ; item 0
+  ;    [set amount-exchanged dps-buyers-beef-needed ] 
+  ;    [set amount-exchanged item 0 (packing-house-beef-available) ]
+      
+      set price-exchanged random-normal beef-conventional_price-packing-house-receives-avg beef-conventional_price-packing-house-receives-stdev
+      
+      set price-tag amount-exchanged * price-exchanged
+      
+      set assets assets - price-tag
+      set beef-conventional_inventory-current ( beef-conventional_inventory-current + amount-exchanged )
+      
+      ask my-packing-house [ 
+        set assets assets + price-tag
+        set beef-conventional_inventory-current ( beef-conventional_inventory-current - amount-exchanged )
+      ]
+    ] 
+  ]
+  
+ 
+ ; ------------------------ end distributor  
+  
+
+  ask dps_buyers [ 
+    let my-seller 0 
+    ; may need to add any? statements in here if getting error messages later
+    if beef-scenario = "baseline" [ set my-seller distributors with [ beef-conventional_inventory-current > 0 ] ]
+    if beef-scenario = "grassfed" [ set my-seller beef_packing-houses with [ beef-grassfed_inventory-current > 0 ] ]
+    if beef-scenario = "colorado-source-id" [ set my-seller beef_packing-houses with [ beef-colorado-source-id_inventory-current > 0 ] ]
+    if beef-scenario = "animal-welfare" [ set my-seller beef_packing-houses with [ beef-animal-welfare_inventory-current > 0 ] ] 
+    
+    let amount-exchanged 0 
+    let price-exchanged 0 
+    let price-tag 0 
+    
+    let dps-buyers-beef-needed 0 
+    let seller-beef-available 0 
+    
+    if beef-scenario = "baseline" [ set dps-buyers-beef-needed beef-conventional_inventory-maximum - beef-conventional_inventory-current ] 
+    if beef-scenario = "grassfed" [ set dps-buyers-beef-needed beef-grassfed_inventory-maximum - beef-grassfed_inventory-current ] 
+    if beef-scenario = "colorado-source-id" [ set dps-buyers-beef-needed beef-colorado-source-id_inventory-maximum - beef-colorado-source-id_inventory-current ] 
+    if beef-scenario = "animal-welfare" [ set dps-buyers-beef-needed beef-animal-welfare_inventory-maximum - beef-animal-welfare_inventory-current ] 
+          
+    if beef-scenario = "baseline" [ set seller-beef-available [ beef-conventional_inventory-current ] of my-seller ] 
+    if beef-scenario = "grassfed" [ set seller-beef-available [ beef-grassfed_inventory-current ] of my-seller ] 
+    if beef-scenario = "colorado-source-id" [ set seller-beef-available [ beef-colorado-source-id_inventory-current ] of my-seller ] 
+    if beef-scenario = "animal-welfare" [ set seller-beef-available [ beef-animal-welfare_inventory-current ] of my-seller ] 
+    set seller-beef-available item 0 (seller-beef-available)
+    
+    ifelse dps-buyers-beef-needed <= seller-beef-available 
+    [set amount-exchanged dps-buyers-beef-needed ] 
+    [set amount-exchanged seller-beef-available ]
+    
+    if beef-scenario = "baseline" [ set price-exchanged random-normal beef-conventional_price-distributor-receives-avg beef-conventional_price-distributor-receives-stdev ]
+    if beef-scenario = "grassfed" [ set price-exchanged random-normal beef-grassfed_price-packing-house-receives-avg beef-grassfed_price-packing-house-receives-stdev ]
+    if beef-scenario = "colorado-source-id" [ set price-exchanged random-normal beef-colorado-source-id_price-packing-house-receives-avg beef-colorado-source-id_price-packing-house-receives-stdev ]
+    if beef-scenario = "animal-welfare" [ set price-exchanged random-normal beef-animal-welfare_price-packing-house-receives-avg beef-animal-welfare_price-packing-house-receives-stdev ]
+    
+    set price-tag amount-exchanged * price-exchanged
+    
+    set assets assets - price-tag
+    if beef-scenario = "baseline" [ set beef-conventional_inventory-current ( beef-conventional_inventory-current + amount-exchanged ) ]
+    if beef-scenario = "grassfed" [ set beef-grassfed_inventory-current ( beef-grassfed_inventory-current + amount-exchanged ) ]
+    if beef-scenario = "colorado-source-id" [ set beef-colorado-source-id_inventory-current ( beef-colorado-source-id_inventory-current + amount-exchanged ) ]
+    if beef-scenario = "animal-welfare" [ set beef-animal-welfare_inventory-current ( beef-animal-welfare_inventory-current + amount-exchanged ) ]
+        
+    ask my-seller [ 
+      set assets assets + price-tag
+      if beef-scenario = "baseline" [ set beef-conventional_inventory-current ( beef-conventional_inventory-current - amount-exchanged ) ]
+      if beef-scenario = "grassfed" [ set beef-grassfed_inventory-current ( beef-grassfed_inventory-current - amount-exchanged ) ]
+      if beef-scenario = "colorado-source-id" [ set beef-colorado-source-id_inventory-current ( beef-colorado-source-id_inventory-current - amount-exchanged ) ]
+      if beef-scenario = "animal-welfare" [ set beef-animal-welfare_inventory-current ( beef-animal-welfare_inventory-current - amount-exchanged ) ]
+    ]
+      ; could add in a process here where if dps buyer cannot get specialty product they want, they fill up the rest of their inventory with conventional beef
+      ; since cull cows produced in moffat and routt much more on par with dps purchase quantities than with other commodities 
+  ] 
+  
+end 
+

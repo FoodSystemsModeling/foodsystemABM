@@ -1,0 +1,796 @@
+extensions [ table matrix GIS ]
+
+
+;MATRIX NOTES:
+;NetLogo's matrix dimensions start with 0!!!
+;An entry in row i and column j represents the receipts of account i from account j (columns sell to rows)
+
+
+__includes [ "wheatContractNegotiation.nls"  "wheatContractFulfillment.nls"  "wheatResetStorage.nls" ] 
+
+
+to reset-storage-wheat
+
+  reset-storage_wheat wheat_farmers
+  reset-storage_wheat wheat_elevators
+  reset-storage_wheat wheat_mills
+  reset-storage_wheat wheat_bakers
+  reset-storage_wheat distributors
+  reset-storage_wheat dps_buyers
+
+end
+
+
+to reset-promised-amounts-wheat
+
+  ask wheat_farmers [
+    set wheat-hrw-conventional-promised 0
+    set wheat-hrw-organic-promised 0
+    set wheat-snowmass-conventional-promised 0 
+  ]
+
+  ask wheat_mills [
+    set wheat-hrw-conventional_my-incoming-total 0
+    set wheat-hrw-conventional-flour-promised 0
+    set wheat-hrw-organic_my-incoming-total 0
+    set wheat-hrw-organic-flour-promised 0
+    set wheat-snowmass-conventional_my-incoming-total 0
+    set wheat-snowmass-conventional-flour-promised 0 
+  ]
+
+  ask wheat_elevators [
+    set wheat-hrw-conventional_my-incoming-total 0
+    set wheat-hrw-conventional-promised 0
+    set wheat-hrw-organic_my-incoming-total 0
+    set wheat-hrw-organic-promised 0
+    set wheat-snowmass-conventional_my-incoming-total 0
+    set wheat-snowmass-conventional-promised 0 
+  ]
+
+  ask wheat_bakers [
+    set wheat-hrw-conventional-flour_my-incoming-total 0
+    set wheat-hrw-conventional-bread-promised 0
+    set wheat-hrw-organic-flour_my-incoming-total 0
+    set wheat-hrw-organic-bread-promised 0
+    set wheat-snowmass-conventional-flour_my-incoming-total 0
+    set wheat-snowmass-conventional-bread-promised 0 
+  ]
+
+  ask distributors [
+    set wheat-hrw-conventional-flour_my-incoming-total 0
+    set wheat-hrw-conventional-flour-promised 0
+    set wheat-hrw-organic-flour_my-incoming-total 0
+    set wheat-hrw-organic-flour-promised 0
+    set wheat-snowmass-conventional-flour_my-incoming-total 0
+    set wheat-snowmass-conventional-flour-promised 0 
+    set wheat-hrw-conventional-bread_my-incoming-total 0
+    set wheat-hrw-conventional-bread-promised 0
+    set wheat-hrw-organic-bread_my-incoming-total 0
+    set wheat-hrw-organic-bread-promised 0
+    set wheat-snowmass-conventional-bread_my-incoming-total 0
+    set wheat-snowmass-conventional-bread-promised 0 
+  ]
+  
+  ask dps_buyers [
+    set wheat-hrw-conventional-flour_my-incoming-total 0    
+    set wheat-hrw-organic-flour_my-incoming-total 0    
+    set wheat-snowmass-conventional-flour_my-incoming-total 0    
+    set wheat-hrw-conventional-bread_my-incoming-total 0   
+    set wheat-hrw-organic-bread_my-incoming-total 0   
+    set wheat-snowmass-conventional-bread_my-incoming-total 0
+    ]
+
+end
+
+
+to reset-tables-wheat
+  
+  table:clear wheat-table_hrw-conventional
+  table:clear wheat-table_hrw-organic
+  table:clear wheat-table_snowmass-conventional
+  table:clear wheat-table_hrw-conventional-flour
+  table:clear wheat-table_hrw-organic-flour
+  table:clear wheat-table_snowmass-conventional-flour
+  table:clear wheat-table_hrw-conventional-bread
+  table:clear wheat-table_hrw-organic-bread
+  table:clear wheat-table_snowmass-conventional-bread
+  
+end
+
+
+to transition-patches-wheat
+  
+  updateTls wheat_farmers
+  profitability-check-wheat
+  transition-check-wheat
+  update-organic-wheat  
+  
+  ;; update the plot on the interface that displays proportions of organic vs conventional land
+  
+  let overall-organic-proportion ( ( ( count patches with [ county-wheat = 1 and certified-organic = 1 ] ) / ( sum [ patches-occupied ] of wheat_farmers ) ) * 100 )
+  let overall-transition-proportion ( ( ( count patches with [ county-wheat = 1 and in-organic-transition = 1 ] ) / ( sum [ patches-occupied ] of wheat_farmers ) ) * 100 )
+  set-current-plot "Proportion of Wheat Land in Organic vs Conventional Management"
+  set-current-plot-pen "Conventional"
+  plotxy ( year - 1 ) 100
+  set-current-plot-pen "In Transition"
+  plotxy ( year - 1 ) ( overall-transition-proportion + overall-organic-proportion )
+  set-current-plot-pen "Organic"
+  plotxy ( year - 1 ) overall-organic-proportion
+  
+  ask wheat_farmers [ 
+    set organic-proportion ( ( ( count my-patches with [ county-wheat = 1 and certified-organic = 1 ] ) / (patches-occupied ) )  )
+    set transition-proportion ( ( ( count my-patches with [ county-wheat = 1 and in-organic-transition = 1 ] ) / ( patches-occupied) ) )
+    set conventional-proportion ( ( ( count my-patches with [ county-wheat = 1 and in-organic-transition = 0 and certified-organic = 0 ] ) / ( patches-occupied) ) )
+  ]
+  
+end
+
+
+to profitability-check-wheat
+  
+  ask wheat_farmers with [ farm-transitioning = 0 ] [
+    
+    let predicted-org-profit 0
+    let predicted-conv-profit 0
+
+    ;; calculate profitability based on growing all conventional wheat for the duration of the planning horizon.
+    ;; first, take the mean lbs/hectare yield of wheat patches, then multiply by the amount of hectares in hrw cultivation, then multiply by farmgate price.
+    ;; then, calculate input costs (which are per acre, not per hectare), and compare to revenue to see how much profit would be made by staying conventional.
+  
+    let mean-conv-yield ( mean [ wheat-hrw-conv-mean-yield ] of my-patches )
+    let estimated-conv-yield ( mean-conv-yield * hectares-farmed-wheat * hrw-allocation )
+    let conventional-revenue-for-conv-calc ( estimated-conv-yield * wheat-hrw-conventional_price-farmgate-avg * organic-planning-horizon )
+    let acres-farmed-wheat ( hectares-farmed-wheat * 2.471 )  ;; 1 ha = 2.471 acres                                                            ; Conversions in this procedure appear appropriate  05/06/2022
+    let conventional-costs ( acres-farmed-wheat * wheat-hrw-conventional_cost-input-per-acre * organic-planning-horizon )
+    set predicted-conv-profit ( conventional-revenue-for-conv-calc - conventional-costs )
+
+    ;; calculate profitability based on growing all organic wheat for the duration of the planning horizon.
+    ;; first, take the mean lbs/hectare yield of wheat patches, then multiply by the amount of hectares in hrw cultivation, then multiply by farmgate price.
+    ;; it takes three years to transition a patch from conventional to organic, during which time a farmer pays organic costs but earns conventional revenue.
+    ;; after that 3-year transition, the farmer pays organic inputs but also earns organic revenues.
+    
+    let mean-org-yield ( mean [ wheat-hrw-org-mean-yield ] of my-patches )
+    let estimated-org-yield ( mean-org-yield * hectares-farmed-wheat )
+    let conventional-revenue-for-org-calc ( estimated-org-yield * wheat-hrw-conventional_price-farmgate-avg * 3 )
+    let organic-revenue ( estimated-org-yield * wheat-hrw-organic_price-farmgate-avg * ( organic-planning-horizon - 3 ) )
+    let organic-costs ( acres-farmed-wheat * wheat-hrw-organic_cost-input-per-acre * organic-planning-horizon )
+    set predicted-org-profit ( conventional-revenue-for-org-calc + organic-revenue - organic-costs )
+    
+    ;; small and medium farms may decide to transition even if it is not profitable - the profitability calculation simply raises or lowers their TLS.
+    ;; large farms will decide to transition (or not) based only on profitability - their TLS score is only used to maintain (or revert) the transition in future years.
+    ;; if it is profitable for a large farm to transition, the farm raises its TLS score and adds one patch into organic transition.
+    ;; if it is not profitable for a large farm to transition, the farm lowers its TLS score.
+    
+    if (farm-size = "small") or (farm-size = "medium") [
+      ifelse ( predicted-org-profit > predicted-conv-profit )
+        [ set transition-likelihood-score ( transition-likelihood-score + .1 ) ]
+        [ set transition-likelihood-score ( transition-likelihood-score - .1 ) ]
+    ]
+      
+    if ( farm-size = "large" ) [
+      ifelse ( predicted-org-profit > predicted-conv-profit )
+        [ set transition-likelihood-score ( transition-likelihood-score + .1 ) 
+          set transition-profitable TRUE
+        ]
+        [ set transition-likelihood-score ( transition-likelihood-score - .1 ) 
+          set transition-profitable FALSE
+        ]
+    ]
+  ]
+  
+end
+
+
+to transition-check-wheat
+  
+  ;; small and large farms check their TLS score to decide whether to begin, continue, or stop transitioning.
+  ;; large farms base the start of transition only on profitability, but once they have started to transition, check their TLS score to see if they continue or stop transitioning.
+  
+  ask wheat_farmers with [ ( farm-size = "small" ) or ( farm-size = "medium" ) or ( ( farm-size = "large" ) and ( farm-transitioning = 1 ) ) ] [
+
+    ;; transition patches into organic:
+    ;; once a farmer reaches 25% of land in organic production and they meet TLS score, they convert the rest of the their land to organic.
+    ;; if they meet the threshold but are still below 25%, they transition only one patch to organic.
+    
+    if transition-likelihood-score >= .5 [
+      let patches-organic my-patches with [ certified-organic = 1 ]
+      let patches-conventional my-patches with [ certified-organic =  0  and in-organic-transition = 0 ]
+      if ( count patches-conventional ) > 0 [
+        let patches-org count patches-organic
+        let patches-all count my-patches
+        let organic-percentage ( patches-org / patches-all)
+        ifelse organic-percentage >= .25  
+          [ ask patches-conventional 
+            [
+            set in-organic-transition 1
+            set organic-conversion-tracker 0
+            ]    
+          ]
+          [ ask one-of patches-conventional 
+            [
+            set in-organic-transition 1
+            set organic-conversion-tracker 0
+            ]
+          ]
+      set farm-transitioning 1
+      ]
+    ]
+
+    ;; transition patches out of organic:
+    ;; any small farm or alternative medium farm that converts completely to organic will never transition back, even if they fail the TLS check at some point after converting.  these farms turn gold on the "organic vs conventional" interface display layer.
+    ;; all other farm types may transition back to conventional production, no matter their progress in converting to organic.
+    
+    if ( transition-likelihood-score < .5 ) and ( ( farm-size = "large" ) or ( ( farm-size = "medium" ) and ( alternative-farmer = 0 ) ) or ( ( farm-size = "small" ) and ( fully-organic = 0 ) ) or ( ( ( farm-size = "medium" ) and ( alternative-farmer = 1 ) ) and ( fully-organic = 0) ) )
+    [
+      ask my-patches [
+        set in-organic-transition 0
+        set organic-conversion-tracker 0
+        set certified-organic 0 
+      ]
+      set grows-organic 0
+      set farm-transitioning 0
+    ]
+    
+   ]
+  
+  ;; large farms that have passed the profitability check to begin transition don't check their TLS, but add 1 patch into organic transition.
+  
+  ask wheat_farmers with [ ( farm-size = "large" ) and ( transition-profitable = TRUE ) ] [
+    let patches-conventional my-patches with [ certified-organic =  0  and in-organic-transition = 0 ]
+    ask one-of patches-conventional [
+      set in-organic-transition 1
+      set organic-conversion-tracker 0
+    ]
+    set farm-transitioning 1
+    set transition-profitable FALSE  
+  ]  
+  
+end
+
+
+to update-organic-wheat
+
+  ask patches with [ ( county-wheat = 1 ) and ( in-organic-transition = 1 ) ] [
+    set organic-conversion-tracker ( organic-conversion-tracker + 1 )
+    if organic-conversion-tracker = 4 [
+      set certified-organic 1
+      set organic-conversion-tracker 0
+      set in-organic-transition 0
+    ]
+    ask my-farmer [
+      let patches-certified ( my-patches with [ certified-organic = 1 ] )
+      ifelse ( count patches-certified ) = ( count my-patches )
+        [ set fully-organic 1 ]
+        [ set fully-organic 0 ]
+    ]
+  ]
+
+end
+
+
+to update-wheat-rotation
+  
+  if year != 1 [
+    
+    let wheat-patches patches with [ county-wheat = 1 ] 
+    
+    ask wheat-patches with [ patch-wheat-fallow-rotate = 1 ] [ 
+      set remainder-patch 0
+      ifelse rotation = "wheat" 
+        [ set rotation "fallow" ]
+        [ set rotation "wheat" ]
+    ] 
+    
+    ask wheat-patches with [ patch-corn-wheat-fallow-rotate = 1 ] [ 
+      set remainder-patch 0
+      let current-rotation rotation
+      if current-rotation = "corn" [ set rotation "wheat" ]
+      if current-rotation = "wheat" [ set rotation "fallow" ] 
+      if current-rotation = "fallow" [ set rotation "corn" ]  
+    ]  
+    
+    ask wheat_farmers [    
+      set patches-in-wheat count ( my-patches with [ rotation = "wheat" ] )
+      set patches-in-rotation ( count my-patches - patches-in-wheat ) 
+      if hectares-farmed-wheat != ( precision hectares-farmed-wheat -2 ) [
+        ask one-of ( my-patches with [ rotation = "wheat" ] ) [ 
+          set remainder-patch 1 
+        ]
+      ]
+    ]
+    
+  ] 
+  
+end
+
+
+to update-display-wheat
+
+  if display-style = "farm ownership" [
+    ask patches with [ occupied = 1 and county-wheat = 1 ] [ set pcolor farmer ]
+  ]
+
+  if display-style = "crop rotation" [
+    ask patches with [ rotation = "wheat" ] [ set pcolor 54 ]       ; green
+    ask patches with [ rotation = "corn" ] [ set pcolor 44 ]        ; yellow
+    ask patches with [ rotation = "fallow" ] [ set pcolor 34 ]      ; brown
+  ]
+
+  if display-style = "organic vs conventional" [
+    ask patches with [ occupied = 1 ] [
+      if certified-organic = 0 [ set pcolor 36 ]
+      if organic-conversion-tracker = 1 [ set pcolor 67 ]
+      if organic-conversion-tracker = 2 [ set pcolor 56 ]
+      if organic-conversion-tracker = 3 [ set pcolor 54 ]
+      if certified-organic = 1 [ set pcolor 62 ]
+    ]
+    ask wheat_farmers with [ ( fully-organic = 1 ) and ( ( farm-size = "small" ) or ( farm-size = "medium" and alternative-farmer = 1 ) ) ] [ 
+      ask my-patches [set pcolor 45 ]
+    ]
+  ]
+
+  if display-style = "bad vs good year" [
+    ask patches with [ occupied = 1 and county-wheat = 1 ] [
+      set pcolor 5
+      if ( wheat-hrw-conv-current-yield > 1.2 * wheat-hrw-conv-mean-yield ) [ set pcolor 125 ]
+      if ( wheat-hrw-conv-current-yield <= 1.2 * wheat-hrw-conv-mean-yield ) [ set pcolor 135 ]
+      if ( wheat-hrw-conv-current-yield <= 1.1 * wheat-hrw-conv-mean-yield ) [ set pcolor 63 ]
+      if ( wheat-hrw-conv-current-yield <= 1 * wheat-hrw-conv-mean-yield ) [ set pcolor 66 ]
+      if ( wheat-hrw-conv-current-yield <= .9 * wheat-hrw-conv-mean-yield ) [ set pcolor 45 ]
+      if ( wheat-hrw-conv-current-yield <= .8 * wheat-hrw-conv-mean-yield ) [ set pcolor 43 ]
+      if ( wheat-hrw-conv-current-yield <= .7 * wheat-hrw-conv-mean-yield ) [ set pcolor 27 ]
+      if ( wheat-hrw-conv-current-yield <= .6 * wheat-hrw-conv-mean-yield ) [ set pcolor 25 ]
+      if ( wheat-hrw-conv-current-yield <= .5 * wheat-hrw-conv-mean-yield ) [ set pcolor 23 ]
+      if ( wheat-hrw-conv-current-yield <= .4 * wheat-hrw-conv-mean-yield ) [ set pcolor 17 ]
+      if ( wheat-hrw-conv-current-yield <= .3 * wheat-hrw-conv-mean-yield ) [ set pcolor 15 ]
+      if ( wheat-hrw-conv-current-yield <= .2 * wheat-hrw-conv-mean-yield ) [ set pcolor 12 ]
+    ]
+  ]
+
+  if display-style = "transition likelihood score" [
+    ask wheat_farmers
+    [ 
+      if ( transition-likelihood-score <  1 ) [ ask my-patches [set pcolor 61 ] ]
+      if ( transition-likelihood-score < .9 ) [ ask my-patches [set pcolor 62 ] ]
+      if ( transition-likelihood-score < .8 ) [ ask my-patches [set pcolor 63 ] ]
+      if ( transition-likelihood-score < .7 ) [ ask my-patches [set pcolor 65 ] ]
+      if ( transition-likelihood-score < .6 ) [ ask my-patches [set pcolor 67 ] ]
+      if ( transition-likelihood-score < .5 ) [ ask my-patches [set pcolor 17 ] ]
+      if ( transition-likelihood-score < .4 ) [ ask my-patches [set pcolor 16 ] ]
+      if ( transition-likelihood-score < .3 ) [ ask my-patches [set pcolor 15 ] ]
+      if ( transition-likelihood-score < .2 ) [ ask my-patches [set pcolor 14 ] ]
+      if ( transition-likelihood-score < .1 ) [ ask my-patches [set pcolor 13 ] ]
+    ]
+  ]
+
+  if display-style = "farm size and ideology" [
+    ask wheat_farmers [
+      if ( farm-size = "small" and alternative-farmer = 0 )  [ ask my-patches [set pcolor 63 ] ]
+      if ( farm-size = "small" and alternative-farmer = 1 ) [ ask my-patches [set pcolor 67 ] ]
+      if ( farm-size = "medium" and alternative-farmer = 0 ) [ ask my-patches [set pcolor 94 ] ]
+      if ( farm-size = "medium" and alternative-farmer = 1 ) [ ask my-patches [set pcolor 97 ] ]
+      if ( farm-size = "large" and alternative-farmer = 0 ) [ ask my-patches [set pcolor 14 ] ]
+      if ( farm-size = "large" and alternative-farmer = 1 ) [ ask my-patches [set pcolor 17 ] ]
+    ]
+  ]
+
+end
+
+
+to set-contracts-wheat
+  
+  ;; this set of transactions happens no matter the scenario.
+  
+  setContracts_hrwConventionalWheat  wheat_farmers  wheat_elevators  number-wheat_elevators FALSE
+  setContracts_hrwOrganicWheat  wheat_farmers  wheat_elevators  number-wheat_elevators FALSE
+  setContracts_snowmassConventionalWheat  wheat_farmers  wheat_elevators  number-wheat_elevators FALSE
+  
+  setContracts_hrwConventionalWheat  wheat_elevators  wheat_mills  number-wheat_mills FALSE
+  setContracts_hrwOrganicWheat wheat_elevators  wheat_mills  number-wheat_mills FALSE
+  setContracts_snowmassConventionalWheat  wheat_elevators  wheat_mills  number-wheat_mills FALSE
+  
+  setContracts_hrwConventionalFlour  wheat_mills  wheat_bakers  number-wheat_bakers FALSE
+  setContracts_hrwOrganicFlour  wheat_mills  wheat_bakers  number-wheat_bakers FALSE
+  setContracts_snowmassConventionalFlour  wheat_mills  wheat_bakers  number-wheat_bakers FALSE
+  
+  setContracts_hrwConventionalFlour  wheat_mills  distributors  number-distributors FALSE
+  setContracts_hrwOrganicFlour wheat_mills  distributors  number-distributors FALSE
+  setContracts_snowmassConventionalFlour  wheat_mills  distributors  number-distributors FALSE
+  
+  setContracts_hrwConventionalBread  wheat_bakers  distributors  number-distributors FALSE
+  setContracts_hrwOrganicBread  wheat_bakers  distributors  number-distributors FALSE
+  setContracts_snowmassConventionalBread  wheat_bakers  distributors  number-distributors FALSE
+  
+  ;; scenario 1: DPS purchases conventional HRW flour and sliced bread from distributor
+  if wheat-scenario = "baseline" [
+    setContracts_hrwConventionalFlour  distributors  dps_buyers  number-dps_buyers FALSE
+    setContracts_hrwConventionalBread  distributors  dps_buyers  number-dps_buyers FALSE ]
+  
+  ;; scenario 2: DPS purchases all bread products in the form of organic HRW bread
+  if wheat-scenario = "organic" [
+    setContracts_hrwOrganicFlour  distributors  dps_buyers  number-dps_buyers FALSE
+    setContracts_hrwOrganicBread  distributors  dps_buyers  number-dps_buyers FALSE ]
+
+  ;; scenario 3: DPS purchases all bread products in the form of snowmass bread
+  if wheat-scenario = "snowmass" [
+    setContracts_snowmassConventionalFlour  distributors  dps_buyers  number-dps_buyers FALSE
+    setContracts_snowmassConventionalBread  distributors  dps_buyers  number-dps_buyers FALSE ]
+
+end
+
+
+to produce-wheat
+
+  set-wheat-yield
+  calculate-annual-production-wheat 
+  update-bad-production-year-wheat
+
+end
+
+
+to set-wheat-yield 
+;  ; waiting on mean wheat files from Francesco and then should be good to "turn on" dssat for wheat. will need to generate a wheat-yes-no layer as well 
+;  ; to show which patches in Washington Co can grow wheat and which don't. same as potato model. need to load files in setupWorld tab. -el 5/22/21   - Doing so RBB 04/06/22
+;
+;  ; comment this out once dssat working below
+;    let occupied-wheat-patches patches with [ rotation = "wheat" ]
+;    ask occupied-wheat-patches [
+;    ; dssat is in bu/ac, need to convert to lbs. when moving product into farmer inventory so consistent with rest of supply chain (prices are in $/lb.)
+;    ; 48 bu/ac conventional and 36 bu/acre organic (from sub-team data spreadsheet, NASS was original data source)
+;    ; 60 lbs in a bushel and .4047 hectares in an acre
+;    ; 48 bushels / acre * (60 lbs / 1 bushel) * (1 acre / .4047 hectares) = 7116 lbs/ha
+;    ; 36 bushels / acre * (60 lbs / 1 bushel) * (1 acre / .4047 hectares) = 5337 lbs/ha
+;    
+;    ; for now pulling wheat yields from a distribution
+;    ; can replace with code below (will need to modify) once we have DSSAT or other dynamic/spatially explicit data available
+;    set wheat-hrw-conv-current-yield round (random-normal 7116 1000) 
+;    set wheat-hrw-org-current-yield round (random-normal 5337 1000)
+;    set wheat-snowmass-conv-current-yield round (random-normal 7116 1000)
+;    
+;  ]
+
+ 
+  ; dssat  ---------------------------------
+  ; set wheat-data-year 2009 + random 10                         ; NOTE:  WHEAT does not include 2019.  Stepping back one year.
+  ; set wheat-data-year 1980 + random 39                       ; NOTE:  Limiting years selected as for potatoes.
+
+  ; hardwire yield data year so can set seed randomly for other model behavior and maintain some stability in yields
+  if year = 1 [ set wheat-data-year 2009 ]
+  if year = 2 [ set wheat-data-year 2010 ]
+  if year = 3 [ set wheat-data-year 2011 ]
+  if year = 4 [ set wheat-data-year 2012 ]
+  if year = 5 [ set wheat-data-year 2013 ]
+  if year = 6 [ set wheat-data-year 2014 ]
+  if year = 7 [ set wheat-data-year 2015 ]
+  if year = 8 [ set wheat-data-year 2016 ]
+  if year = 9 [ set wheat-data-year 2017 ]
+  if year = 10 [ set wheat-data-year 2018 ]
+  if year = 11 [ set wheat-data-year 2009 ]
+  
+  ; the code below has been renamed to match the wheat dssat files available in working directory, can turn on once get mean files and wheat-yes-no file
+  let file-name-hrw-conv (word wheat-data-year "_red_wheatFallow_conventional.asc")
+  set wheat-hrw-conventional-load gis:load-dataset file-name-hrw-conv
+  gis:apply-raster wheat-hrw-conventional-load wheat-hrw-conv-current-yield
+
+  let file-name-hrw-org (word wheat-data-year "_red_wheatFallow_organic.asc")
+  set wheat-hrw-organic-load gis:load-dataset file-name-hrw-org
+  gis:apply-raster wheat-hrw-organic-load wheat-hrw-org-current-yield
+
+  let file-name-snowmass-conventional (word wheat-data-year "_white_wheatFallow_conventional.asc")
+  set wheat-snowmass-conventional-load gis:load-dataset file-name-snowmass-conventional
+  gis:apply-raster wheat-snowmass-conventional-load wheat-snowmass-conv-current-yield
+
+  ask patches with [ county-wheat = 1 ]
+  [
+    ifelse wheat-hrw-conv-current-yield >= 0
+    []
+    [ set wheat-hrw-conv-current-yield 0 ]
+    ifelse wheat-hrw-org-current-yield >= 0
+    []
+    [ set wheat-hrw-org-current-yield 0 ] 
+    ifelse wheat-snowmass-conv-current-yield >= 0
+    []
+    [ set wheat-snowmass-conv-current-yield 0 ]
+  ]
+
+  ; convert bu/acre to lbs/patch 
+  ; bu/acre * (60 lb./1 bu) * (1 acre/.4047 hectares) * (100 hectares/1 patch)
+  ; x bu/acre * 14,825.8 = y lbs/patch 
+  
+  ask patches with [ occupied = 1 and county-wheat = 1 ]                                                        ; *** FROM BUSHELS PER ACRE TO POUNDS PER HECTARE ***
+  [
+    set wheat-hrw-conv-current-yield  wheat-hrw-conv-current-yield * 14825.8                                    ; 60 bushels per acre to lbs per ha is * 148.258.  100 ha per patch, and so 14825.8 for lbs per patch
+    set wheat-hrw-org-current-yield  wheat-hrw-org-current-yield * 14825.8
+    set wheat-snowmass-conv-current-yield  wheat-snowmass-conv-current-yield * 14825.8
+  ]
+  
+  ; A NaN error is reoccurring based on the yield surfaces.  I am replacing those values.
+  ask patches with [ wheat-yes-no = 1 ] 
+  [
+    ifelse wheat-hrw-conv-current-yield < 0 or wheat-hrw-conv-current-yield >= 0
+    []    ; Note empty if portion of ifelse
+    [
+      set wheat-hrw-conv-current-yield 0
+    ]
+    ifelse wheat-hrw-org-current-yield < 0 or wheat-hrw-org-current-yield >= 0
+    []    ; Note empty if portion of ifelse
+    [
+      set wheat-hrw-org-current-yield 0
+    ]
+    ifelse wheat-snowmass-conv-current-yield < 0 or wheat-snowmass-conv-current-yield >= 0
+    []    ; Note empty if portion of ifelse
+    [
+      set wheat-snowmass-conv-current-yield 0
+    ]
+  ]
+  
+  ask patches with [occupied = 1 and wheat-yes-no = 1 ]; this fixes the situation where some years from DSSAT seem to produce NaN for a small number of patches. I think this is a DSSAT error.  Making it match potatoes - rbb 04/13/2022
+  [
+    if wheat-hrw-conv-current-yield = 0
+    [
+      ; won't this take into account the 0 values from above, skewing the value down for these patches? 
+      ; maybe not enough patches to matter but could we alter to say patches with wheat-yes-no = 1 and hrw-conv-yield > 0?
+      ; - el 5/7/21      0 patches have been excluded.  That will be a shrinking number as values are replaced, but a minor effect.  rb 5/20/22
+      set wheat-hrw-conv-current-yield mean [wheat-hrw-conv-current-yield] of patches with [wheat-yes-no = 1 and wheat-hrw-conv-current-yield > 0 ]
+      set wheat-hrw-org-current-yield mean [wheat-hrw-org-current-yield] of patches with [wheat-yes-no = 1 and wheat-hrw-conv-current-yield > 0 ]
+      set wheat-snowmass-conv-current-yield mean [wheat-snowmass-conv-current-yield] of patches with [wheat-yes-no = 1 and wheat-hrw-conv-current-yield > 0 ]
+    ]
+  ]
+  
+end
+
+
+to calculate-annual-production-wheat 
+  ask wheat_farmers [   
+    let my-wheat-patches my-patches with [ rotation = "wheat" and wheat-yes-no = 1 ]                                                                                                                                   ; patch set
+    let my-organic-patches-for-costs ( my-wheat-patches with [ ( certified-organic = 1 ) or ( in-organic-transition = 1 ) ] )                                                                                          ; patch set
+    let my-organic-patches-for-production ( my-wheat-patches with [ certified-organic = 1 ] )                                                                                                                          ; patch set
+    let my-conventional-patches-for-costs ( my-wheat-patches with [ ( certified-organic = 0 ) and ( in-organic-transition = 0 ) ] )                                                                                    ; patch set
+    let my-conventional-patches-for-production ( my-wheat-patches with [ certified-organic != 1 ] )                                                                                                                    ; patch set
+    
+    ;; convert farmer patches to hectares for input costs, then charge farmers for input costs (inputs costs are on a per-acre basis, multiplied by acres/hectare)
+    let my-conv-hectares-even ( count ( my-conventional-patches-for-costs with [ remainder-patch = 0 ] ) * 100 )                                                                                                       ; hectares
+    let my-conv-hectares-remainder ( count ( my-conventional-patches-for-costs with [ remainder-patch = 1 ] ) ) * ( abs ( ( 100 * ( patches-in-wheat - 1 ) ) - hectares-farmed-wheat ) )                               ; hectares
+    let my-conv-hectares-total ( my-conv-hectares-even + my-conv-hectares-remainder )                                                                                                                                  ; hectares
+    set my-hrw-conventional-hectares-for-costs round ( my-conv-hectares-total * hrw-allocation )                                                                                                                       ; hectares
+    set my-snowmass-conventional-hectares-for-costs ( my-conv-hectares-total - my-hrw-conventional-hectares-for-costs )                                                                                                ; hectares
+    set my-hrw-organic-hectares-for-costs ( hectares-farmed-wheat - my-conv-hectares-total )                                                                                                                           ; hectares
+    set assets ( assets - ( my-hrw-conventional-hectares-for-costs * ( wheat-hrw-conventional_cost-input-per-acre * 2.471052 ) ) )                   ; Conversion to ha ok, just doing costs  05/06/22 rbb             ; $
+    set assets ( assets - ( my-hrw-organic-hectares-for-costs * ( wheat-hrw-organic_cost-input-per-acre * 2.471052 ) ) )                                                                                               ; $
+    set assets ( assets - ( my-snowmass-conventional-hectares-for-costs * ( wheat-snowmass-conventional_cost-input-per-acre * 2.471052 ) ) )                                                                           ; $
+    ;; NOTE that in some cases farmers can own 0 hectares my-conv-hectares-total, for example.     rb 05/20/2022    
+    
+    ;; recalculate hectares using production patches instead of input cost patches, then calculate production (in pounds) on each patch based on values in set-wheat-yield, then update production and inventory variables.
+    ;; this is trickier than calculating input costs because input costs are per-acre (and thus uniform across the patches), whereas production yields vary across each patch on the farm.
+    ;; since 95% of conventional production is HRW and 5% is Snowmass, each even (i.e. non-remainder) conventional patch is comprised of 95 hectares of HRW and 5 of Snowmass for calculations.
+    let hrw-conv-yield-total 0                                                                                                                                                                                          ; pounds
+    let snowmass-yield-total 0                                                                                                                                                                                          ; pounds
+    let hrw-organic-yield-total 0                                                                                                                                                                                       ; pounds
+    ask my-conventional-patches-for-production with [ remainder-patch = 0 ] [                                                                                                                                           ; for patch set
+      let my-hrw-yield ( wheat-hrw-conv-current-yield * 0.95 )                                  ; Removed repeating conversion (i.e., 95 changed to 0.95), wheat-hrw-conv-current-yield is patches  05/06/22 rbb        ; pounds, from pounds per patch
+      let my-snowmass-yield ( wheat-snowmass-conv-current-yield * 0.05 )                                                                                                                                                ; pounds, from pounds per patch
+      set hrw-conv-yield-total ( hrw-conv-yield-total + my-hrw-yield )                                                                                                                                                  ; pounds, pounds per patch
+      set snowmass-yield-total ( snowmass-yield-total + my-snowmass-yield )                                                                                                                                             ; pounds, pounds per patch
+    ]
+    ask my-conventional-patches-for-production with [ remainder-patch = 1 ] [                                                                                                                                           ; for patch set
+      let remainder-hectares abs ( ( 100 * ( ( item 0 [ patches-in-wheat ] of my-farmer ) - 1 ) ) - ( item 0 [ hectares-farmed-wheat ] of my-farmer ) )                                                                 ; hectares
+      let hrw-remainder ( remainder-hectares * .95)                                                                                                                                                                     ; hectares
+      let snowmass-remainder ( remainder-hectares - hrw-remainder )                                                                                                                                                     ; hectares
+      set hrw-conv-yield-total ( hrw-conv-yield-total + ( hrw-remainder * ( wheat-hrw-conv-current-yield / 100.0 ) ) )                                                                                                  ; pounds, and corrected to hectares * pounds per hectare   05/20/2022                                                      
+      set snowmass-yield-total ( snowmass-yield-total + ( snowmass-remainder * ( wheat-snowmass-conv-current-yield / 100.0 ) ) )                                                                                        ; pounds, corrected to hectares * pounds per hectare   05/20/2022      
+    ]
+    ask my-organic-patches-for-production with [ remainder-patch = 0 ] [                                                                                                                                                ; for patch set
+      let my-org-yield ( wheat-hrw-org-current-yield * 1.00 )                                                    ; Removed repeating conversion, but kept structure by changing 100 to 1.00                             ; pounds per patch
+      set hrw-organic-yield-total ( hrw-organic-yield-total + ( my-org-yield / 100.0 ) )                                                                                                                                ; pounds, corrected to pounds + pounds per hectare     05/20/2022
+    ]
+    ask my-organic-patches-for-production with [ remainder-patch = 1 ] [                                                                                                                                                ; for patch set
+      let remainder-hectares abs ( ( 100 * ( ( item 0 [ patches-in-wheat ] of my-farmer ) - 1 ) ) - ( item 0 [ hectares-farmed-wheat ] of my-farmer ) )                                                                 ; hectares
+      set hrw-organic-yield-total ( hrw-organic-yield-total + ( remainder-hectares * ( wheat-hrw-org-current-yield / 100.0 ) ) )                                                                                        ; pounds, corrected to hectares * pounds per hectare   05/20/2022      
+    ]
+    set wheat-hrw-conventional-current-production round hrw-conv-yield-total                                                                                                                                            ; pounds
+    set wheat-hrw-organic-current-production round hrw-organic-yield-total                                                                                                                                              ; pounds
+    set wheat-snowmass-conventional-current-production round snowmass-yield-total                                                                                                                                       ; pounds
+    set wheat-hrw-conventional_inventory-current ( wheat-hrw-conventional_inventory-current + wheat-hrw-conventional-current-production)                                                                                ; pounds
+    set wheat-hrw-organic_inventory-current ( wheat-hrw-organic_inventory-current + wheat-hrw-organic-current-production)                                                                                               ; pounds
+    set wheat-snowmass-conventional_inventory-current ( wheat-snowmass-conventional_inventory-current + wheat-snowmass-conventional-current-production)                                                                 ; pounds
+  ]
+  
+end
+
+
+to update-bad-production-year-wheat
+
+  ask wheat_farmers [
+    let last-year-mediocre mediocre-production-year
+    let last-year-bad bad-production-year
+    set mediocre-production-year 0
+    set bad-production-year 0
+
+    ;; if production of any variety is between 60 - 100% of mean yield the year is considered a "mediocre" production year.
+    ;; if production of any variety is below 60% of its mean yield, the year is considered a "bad" production year.
+    ;; these variables are used in the TLS update.
+
+    if ( wheat-hrw-conv-current-yield > .6 * wheat-hrw-conv-mean-yield ) and ( wheat-hrw-conv-current-yield < wheat-hrw-conv-mean-yield )
+        [ set mediocre-production-year 1 ]
+    if ( wheat-hrw-org-current-yield > .6 * wheat-hrw-org-mean-yield ) and ( wheat-hrw-org-current-yield < wheat-hrw-org-mean-yield )
+        [ set mediocre-production-year 1 ]
+    if ( wheat-snowmass-conv-current-yield > .6 * wheat-snowmass-conv-mean-yield ) and ( wheat-snowmass-conv-current-yield < wheat-snowmass-conv-mean-yield )
+        [ set mediocre-production-year 1 ]
+
+    if wheat-hrw-conv-current-yield <= .6 * wheat-hrw-conv-mean-yield
+        [set bad-production-year 1]
+    if wheat-hrw-org-current-yield <= .6 * wheat-hrw-org-mean-yield
+        [set bad-production-year 1]
+    if wheat-snowmass-conv-current-yield <= .6 * wheat-snowmass-conv-mean-yield
+        [set bad-production-year 1]
+    ]
+
+end
+
+
+to update-wheat-production
+  
+  ;; this procedure calculates the total amount of wheat produced across the model for each varietal, and plots annual totals to the interface.
+  ;; it also keeps a running tally of total pounds of wheat produced thus far in the model run for each varietal.
+
+  set-current-plot "Total Production by Wheat Type"
+  set wheat-hrw-conventional_production-annual sum [ wheat-hrw-conventional-current-production ] of wheat_farmers 
+  set wheat-hrw-conventional_production-total-model-run ( wheat-hrw-conventional_production-total-model-run + wheat-hrw-conventional_production-annual )
+  set-current-plot-pen "HRW conventional"
+  plotxy year wheat-hrw-conventional_production-annual  
+  
+  set wheat-hrw-organic_production-annual sum [ wheat-hrw-organic-current-production ] of wheat_farmers 
+  set wheat-hrw-organic_production-total-model-run ( wheat-hrw-organic_production-total-model-run + wheat-hrw-organic_production-annual )
+  set-current-plot-pen "HRW organic"
+  plotxy ( year + .33 ) wheat-hrw-organic_production-annual
+  
+  set wheat-snowmass-conventional_production-annual sum [ wheat-snowmass-conventional-current-production ] of wheat_farmers 
+  set wheat-snowmass-conventional_production-total-model-run ( wheat-snowmass-conventional_production-total-model-run + wheat-snowmass-conventional_production-annual )
+  set-current-plot-pen "Snowmass"
+  plotxy ( year + .66 ) wheat-snowmass-conventional_production-annual
+  
+end 
+
+
+to fulfill-stage1-contracts-wheat
+  
+  fulfillContracts_hrwConventionalWheat wheat_farmers  wheat_elevators
+  fulfillContracts_hrwOrganicWheat wheat_farmers  wheat_elevators
+  fulfillContracts_snowmassConventionalWheat wheat_farmers  wheat_elevators
+  
+  fulfillContracts_hrwConventionalWheat wheat_elevators  wheat_mills    
+  fulfillContracts_hrwOrganicWheat wheat_elevators  wheat_mills    
+  fulfillContracts_snowmassConventionalWheat wheat_elevators  wheat_mills  
+  
+end
+
+
+to make-flour
+  
+  ask wheat_mills [
+    
+    ; hrw conventional 
+    if wheat-hrw-conventional_inventory-current > 0 [
+      let converted-amount ( wheat-hrw-conventional_inventory-current * .75 ) ;; assumes 75% conversion rate grain to flour
+      let processed-space-available ( wheat-hrw-conventional-flour_inventory-maximum - wheat-hrw-conventional-flour_inventory-current )
+      ifelse processed-space-available >= converted-amount
+      [ 
+        set wheat-hrw-conventional-flour_inventory-current ( wheat-hrw-conventional-flour_inventory-current + converted-amount )
+        set wheat-hrw-conventional_inventory-current 0 
+      ]
+      [ 
+        set wheat-hrw-conventional-flour_inventory-current ( wheat-hrw-conventional-flour_inventory-current + processed-space-available )
+        set wheat-hrw-conventional_inventory-current ( wheat-hrw-conventional_inventory-current - ( ( ( 1 / 3 ) + 1 ) * processed-space-available ) )
+      ]
+    ]
+  
+    ; hrw organic
+    if wheat-hrw-organic_inventory-current > 0 [
+      let converted-amount ( wheat-hrw-organic_inventory-current * .75 ) ;; assumes 75% conversion rate grain to flour
+      let processed-space-available ( wheat-hrw-organic-flour_inventory-maximum - wheat-hrw-organic-flour_inventory-current )
+      ifelse processed-space-available >= converted-amount
+      [ set wheat-hrw-organic-flour_inventory-current ( wheat-hrw-organic-flour_inventory-current + converted-amount )
+        set wheat-hrw-organic_inventory-current 0 
+      ]
+      [ set wheat-hrw-organic-flour_inventory-current ( wheat-hrw-organic-flour_inventory-current + processed-space-available )
+        set wheat-hrw-organic_inventory-current ( wheat-hrw-organic_inventory-current - ( ( ( 1 / 3 ) + 1 ) * processed-space-available ) ) 
+      ]
+    ]
+
+     ; snowmass conventional
+     if wheat-snowmass-conventional_inventory-current > 0 [
+       let converted-amount ( wheat-snowmass-conventional_inventory-current * .75 ) ;; assumes 75% conversion rate grain to flour
+       let processed-space-available ( wheat-snowmass-conventional-flour_inventory-maximum - wheat-snowmass-conventional-flour_inventory-current )
+       ifelse processed-space-available >= converted-amount
+       [ set wheat-snowmass-conventional-flour_inventory-current ( wheat-snowmass-conventional-flour_inventory-current + converted-amount )
+         set wheat-snowmass-conventional_inventory-current 0 
+       ]
+       [ set wheat-snowmass-conventional-flour_inventory-current ( wheat-snowmass-conventional-flour_inventory-current + processed-space-available )
+         set wheat-snowmass-conventional_inventory-current ( wheat-snowmass-conventional_inventory-current - ( ( ( 1 / 3 ) + 1 ) * processed-space-available ) ) 
+      ]
+     ]
+  ]
+  
+end 
+
+
+to fulfill-stage2-contracts-wheat
+  
+  fulfillContracts_hrwConventionalFlour wheat_mills  wheat_bakers   
+  fulfillContracts_hrwOrganicFlour wheat_mills  wheat_bakers  
+  fulfillContracts_snowmassConventionalFlour wheat_mills  wheat_bakers
+  
+  fulfillContracts_hrwConventionalFlour wheat_mills  distributors   
+  fulfillContracts_hrwOrganicFlour wheat_mills  distributors   
+  fulfillContracts_snowmassConventionalFlour wheat_mills  distributors
+  
+end
+
+
+to make-bread
+
+  ask wheat_bakers [
+    if wheat-hrw-conventional-flour_inventory-current > 0 [
+      let conversion ( wheat-hrw-conventional-flour_inventory-current ) 
+      let processed-space-available ( wheat-hrw-conventional-bread_inventory-maximum - wheat-hrw-conventional-bread_inventory-current )
+      ifelse processed-space-available >= conversion
+      [ set wheat-hrw-conventional-bread_inventory-current ( wheat-hrw-conventional-bread_inventory-current + conversion )
+        set wheat-hrw-conventional-flour_inventory-current 0 ]
+      [ set wheat-hrw-conventional-bread_inventory-current ( wheat-hrw-conventional-bread_inventory-current + processed-space-available )
+        set wheat-hrw-conventional-flour_inventory-current ( wheat-hrw-conventional-flour_inventory-current - processed-space-available ) ] 
+    ]
+  ]
+  
+  ask wheat_bakers [
+    if wheat-hrw-organic-flour_inventory-current > 0 [
+      let conversion ( wheat-hrw-organic-flour_inventory-current ) 
+      let processed-space-available ( wheat-hrw-organic-bread_inventory-maximum - wheat-hrw-organic-bread_inventory-current )
+      ifelse processed-space-available >= conversion
+      [ set wheat-hrw-organic-bread_inventory-current ( wheat-hrw-organic-bread_inventory-current + conversion )
+        set wheat-hrw-organic-flour_inventory-current 0 ]
+      [ set wheat-hrw-organic-bread_inventory-current ( wheat-hrw-organic-bread_inventory-current + processed-space-available )
+        set wheat-hrw-organic-flour_inventory-current ( wheat-hrw-organic-flour_inventory-current - processed-space-available ) ] 
+    ]
+  ]
+  
+  ask wheat_bakers [
+    if wheat-snowmass-conventional-flour_inventory-current > 0 [
+      let conversion ( wheat-snowmass-conventional-flour_inventory-current ) 
+      let processed-space-available ( wheat-snowmass-conventional-bread_inventory-maximum - wheat-snowmass-conventional-bread_inventory-current )
+      ifelse processed-space-available >= conversion
+      [ set wheat-snowmass-conventional-bread_inventory-current ( wheat-snowmass-conventional-bread_inventory-current + conversion )
+        set wheat-snowmass-conventional-flour_inventory-current 0 ]
+      [ set wheat-snowmass-conventional-bread_inventory-current ( wheat-snowmass-conventional-bread_inventory-current + processed-space-available )
+        set wheat-snowmass-conventional-flour_inventory-current ( wheat-snowmass-conventional-flour_inventory-current - processed-space-available ) ] 
+    ]
+  ]
+
+end
+
+
+to fulfill-stage3-contracts-wheat
+
+  fulfillContracts_hrwConventionalBread wheat_bakers  distributors  
+  fulfillContracts_hrwOrganicBread wheat_bakers  distributors  
+  fulfillContracts_snowmassConventionalBread wheat_bakers  distributors
+  
+  ;assume 50/50 transaction percent breakdown between flour and bread
+  ;scenario 1: DPS purchases flour and sliced bread made from organic HRW wheat
+  if wheat-scenario = "baseline" [    
+    fulfillContracts_hrwConventionalFlour distributors  dps_buyers      
+    fulfillContracts_hrwConventionalBread distributors  dps_buyers     
+  ]
+  
+  ;scenario 2: DPS purchases flour and sliced bread made from organic HRW wheat
+  if wheat-scenario = "organic" [    
+    fulfillContracts_hrwOrganicFlour distributors  dps_buyers      
+    fulfillContracts_hrwOrganicBread distributors  dps_buyers     
+  ]
+
+  ;scenario 3: DPS purchases flour and sliced bread made from Snowmass wheat
+  if wheat-scenario = "snowmass" [    
+    fulfillContracts_snowmassConventionalFlour distributors  dps_buyers     
+    fulfillContracts_snowmassConventionalBread distributors  dps_buyers    
+  ]
+
+end

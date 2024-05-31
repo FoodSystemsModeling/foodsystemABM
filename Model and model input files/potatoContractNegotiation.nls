@@ -1,0 +1,2027 @@
+
+;; -------------------------------------------------------------------------------------------
+;; if week = 31, set prime season contract, offering 50% of estimated annual yield
+;; if week = 5, set off season contract #1, offering 50% of remaining inventory
+;; if week = 18, set prime season contract #2, offering last 50% of actual inventory
+;; prime season contracts are based on estimated yield, because contracting occurs before harvest
+;; off-season contracts are based on actual yield, because harvest is complete by contracting time
+;; --------------------------------------------------------------------------------------------
+
+
+to priceAdjustments_russetConventionalFresh [ buyers  buyer_count ]
+ 
+  ask buyers [
+    if year != 1 [
+      let subgroup-number ( round ( market-knowledge * buyer_count ) ) 
+      let comparison-group n-of subgroup-number buyers
+      let lowest-buyer min-one-of comparison-group [ potatoes-russet-conventional-fresh_price-to-buy ] 
+      let highest-buyer max-one-of comparison-group [ potatoes-russet-conventional-fresh_price-to-buy ]
+      ask lowest-buyer [ set potatoes-russet-conventional-fresh_price-to-buy ( potatoes-russet-conventional-fresh_price-to-buy * 1.1 ) ]      
+      ask highest-buyer [ set potatoes-russet-conventional-fresh_price-to-buy ( potatoes-russet-conventional-fresh_price-to-buy * .9 ) ] 
+    ] 
+  ]
+  
+end
+
+
+to-report contractSpaceAvailable_russetConventionalFresh [ buyers  debug ]
+  
+  ask buyers [
+    set potatoes-russet-conventional-fresh_contract-space-available ( potatoes-russet-conventional-fresh_inventory-maximum - potatoes-russet-conventional-fresh_inventory-current ) 
+    if debug = TRUE [ print " " print agent-name print "contract space available: " print potatoes-russet-conventional-fresh_contract-space-available print " " ] 
+  ]
+  report buyers
+    
+end
+
+
+to setContracts_russetConventionalFresh [ sellers  buyers  buyer_count  loyalty ]
+  
+  if debug-mode = TRUE [ 
+    print " "
+    print "------------------------------------------------------"
+    print "CONTRACTING STEP:"
+    let tmp word sellers " sell to " 
+    print word tmp buyers
+    print "------------------------------------------------------" ]
+  
+  priceAdjustments_russetConventionalFresh  buyers buyer_count
+  
+  ;set buyers contractSpaceAvailable_russetConventionalFresh buyers debug-mode
+  ask buyers [ set potatoes-russet-conventional-fresh_contract-space-available ( potatoes-russet-conventional-fresh_inventory-maximum - potatoes-russet-conventional-fresh_inventory-current ) ]
+  
+  ask sellers [
+    
+    if debug-mode = TRUE [ 
+        print " "  
+        print "-------------------------------------------------------"
+        print "beginning negotation"
+        print "-------------------------------------------------------"
+        print " " ]
+    
+    let potatoes-russet-conventional-quantity-estimate 0
+    let contracted-this-time 0
+    
+    if sellers != potato_farmers [
+      if potatoes-russet-conventional-fresh_my-incoming-total < 0 [ set potatoes-russet-conventional-fresh_my-incoming-total 0 ] 
+    ]
+    
+    ifelse sellers = potato_farmers [
+      let transaction-percent 0        
+      if buyers = potato_shippers [ set transaction-percent .35 ]
+      if buyers = potato_repackers [ set transaction-percent 1 ]
+      
+      if week = 31 [
+        set potatoes-russet-conventional-quantity-estimate ( ( potato-farmers_yield-estimated_russet-conventional * .5 ) * transaction-percent ) ] ; half of estimated yield promised during 6-month prime contract season
+      let inventory-for-off-season 0
+      if week = 5 [
+        set inventory-for-off-season potatoes-russet-conventional-fresh_inventory-current 
+        set potatoes-russet-conventional-quantity-estimate ( ( inventory-for-off-season * transaction-percent ) * .5 ) ] ; half of actual inventory at start of off-season promised during both 3-month off-season contract seasons
+      if week = 18 [ 
+        set potatoes-russet-conventional-quantity-estimate ( ( inventory-for-off-season * transaction-percent ) * .5 ) ] ; half of actual inventory at start of off-season promised during both 3-month off-season contract seasons
+      if debug-mode = TRUE [
+        print "farmer's total yield (potato-farmers_yield-estimated_russet-conventional):"
+        print potato-farmers_yield-estimated_russet-conventional ] 
+      ]
+    
+      [ ifelse sellers = potato_shippers [                                                                  ; What does the leading bracket match?  What code is it connected with?   
+          let transaction-percent 0
+          if buyers = dps_buyers [ set transaction-percent 1 ]
+          if buyers = potato_processors [ set transaction-percent .5 ]
+          if buyers = distributors [ set transaction-percent 1 ]         
+          set potatoes-russet-conventional-quantity-estimate ( potatoes-russet-conventional-fresh_my-incoming-total * transaction-percent ) 
+        ] ; ( ( potatoes-russet-conventional-fresh_inventory-maximum - potatoes-russet-conventional-fresh_contract-space-available ) * transaction-percent )]
+        [ set potatoes-russet-conventional-quantity-estimate potatoes-russet-conventional-fresh_my-incoming-total ] 
+      ] ; ( potatoes-russet-conventional-fresh_inventory-maximum - potatoes-russet-conventional-fresh_contract-space-available ) ] ]
+
+    if debug-mode = TRUE [ 
+      print " "
+      print agent-name
+      print "estimated quantity available to contract this step (potatoes-russet-conventional-quantity-estimate):"
+      print potatoes-russet-conventional-quantity-estimate ]
+    
+    while [ ( potatoes-russet-conventional-fresh-promised < potatoes-russet-conventional-quantity-estimate ) and ( any? buyers with [ potatoes-russet-conventional-fresh_contract-space-available > 0 ] ) ] [
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "beginning while loop"
+        print "-------------------------------------------------------"
+        print " " ]
+      
+      if debug-mode = true [
+        print " "
+        print "we are thinking about buyers!"
+        print "seller name: "
+        print agent-name
+        print "seller id:"
+        print id
+        print "potatoes-russet-conventional-fresh-promised:"
+        print potatoes-russet-conventional-fresh-promised
+        print "potatoes-russet-conventional-quantity-estimate:"
+        print potatoes-russet-conventional-quantity-estimate ]
+
+      let buyers-with-capacity ( buyers with [ potatoes-russet-conventional-fresh_contract-space-available > 0 ] )
+      if debug-mode = true [
+        print " "
+        print "buyers with capacity:"
+        print buyers-with-capacity ]
+      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers ] ]  
+        [ set bidding_buyers buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers
+            print "who numbers of bidding buyers:"
+            print [who] of bidding_buyers ] ]
+
+       let my-buyer 0                                                                                 ; Addition April 16, 2021 to next comment
+        ;getting runtime error, commenting out for now so can check on some other things in the model - el 4/23/21
+        
+;       ifelse loyalty = TRUE and loyalty-to-buyer-id > 0 
+;       [
+;         set my-buyer one-of bidding_buyers with [ id = loyalty-to-buyer-id ]
+;       ]
+;       [
+         set my-buyer n-of 1 ( bidding_buyers with-max [ potatoes-russet-conventional-fresh_price-to-buy ] ) 
+;         if loyalty = TRUE [ set loyalty-to-buyer-id [ id ] of my-buyer ]
+;       ]
+;       ; If a seller is loyal to a buyer but the buyer is paying below the mean of all knows buyers, stop being loyal and take the highest bidder
+;       let price-on-offer [ potatoes-russet-conventional-fresh_price-to-buy ] of my-buyer
+;       let mean-price-on-offer mean [ potatoes-russet-conventional-fresh_price-to-buy ] of bidding_buyers
+;       if loyalty = TRUE and price-on-offer < mean-price-on-offer [
+;         set my-buyer n-of 1 ( bidding_buyers with-max [ potatoes-russet-conventional-fresh_price-to-buy ] ) 
+;         set loyalty-to-buyer-id [ id ] of my-buyer 
+;       ]                                                                                               ; End of addition from April 16, 2021        
+        
+        
+      set potatoes-russet-conventional-fresh_price-to-sell item 0 [ potatoes-russet-conventional-fresh_price-to-buy ] of my-buyer
+        
+      ; if buyer is dps and scenario is fresh or gfpp set price to distrib from those scenarios
+      if buyers = dps_buyers and potato-scenario = "gfpp" [
+          set potatoes-russet-conventional-fresh_price-to-sell random-normal potato-conventional-russet_gfpp-price-shipper-receives-avg potato-conventional-russet_gfpp-price-shipper-receives-stdev
+          set short-supply-chain-interactions short-supply-chain-interactions + 1 ;added 12/10/21 el
+        ]
+      if buyers = dps_buyers and potato-scenario = "small-potatoes" [
+          set potatoes-russet-conventional-fresh_price-to-sell random-normal potato-conventional-russet_gfpp-price-shipper-receives-avg potato-conventional-russet_gfpp-price-shipper-receives-stdev
+          set short-supply-chain-interactions short-supply-chain-interactions + 1 ;added 12/10/21 el
+        ]
+        
+        
+      if ( week = 5 ) or ( week = 18 ) 
+        [ set potatoes-russet-conventional-fresh_price-to-sell ( potatoes-russet-conventional-fresh_price-to-sell * 1.1 ) ] ; prices are 10% higher during the off-season
+      if debug-mode = true [
+        print " "
+        print "price to buy:"
+        print [ potatoes-russet-conventional-fresh_price-to-buy ] of my-buyer]
+        
+      let col-id id
+      let row-id 0
+      if debug-mode = true [ 
+        print " "
+        print "my buyer's name:"
+        print [ agent-name ] of my-buyer
+        print "my buyer's id:"
+        print [ id ] of my-buyer
+        print "my buyer's space available:"
+        print [ potatoes-russet-conventional-fresh_contract-space-available ] of my-buyer ]
+      ask my-buyer [
+        set row-id id ]
+
+
+      let rounded-price ( precision ( potatoes-russet-conventional-fresh_price-to-sell ) 2 )
+      table_set potato-table_russet-conventional row-id col-id POTATO_PRICE rounded-price debug-mode
+         
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "end of price negotatiations - moving on to quantity negotiation"
+        print "-------------------------------------------------------"
+        print " " ]
+              
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+      let contract-space-available item 0 ( [ potatoes-russet-conventional-fresh_contract-space-available ] of my-buyer )
+      let seller_potatoes-available ( potatoes-russet-conventional-quantity-estimate - potatoes-russet-conventional-fresh-promised )
+        
+      ifelse contract-space-available >= seller_potatoes-available
+        [ set contracted-this-time seller_potatoes-available ]
+        [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]  
+        
+      if debug-mode = TRUE [
+        print " "
+        print "updated yield promised from matrix"
+        print potatoes-russet-conventional-fresh-promised ]  
+        
+      table_create_and_sum potato-table_russet-conventional row-id col-id POTATO_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to potato quantity table
+        
+      ;; adding code to initialize outstanding potato table
+      table_create_and_sum potato-table_russet-conventional row-id col-id POTATO_OUTSTANDING_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to potato quantity table
+        
+      if debug-mode = TRUE [
+        print " "
+        print "yield promised before this contract"
+        print potatoes-russet-conventional-fresh-promised
+        print "amount contracted this time"
+        print contracted-this-time ]
+        
+      set potatoes-russet-conventional-fresh-promised ( potatoes-russet-conventional-fresh-promised + contracted-this-time )   
+        
+      if debug-mode = TRUE [
+        print " "
+        print "-------------------------------------------------------"
+        if sellers = potato_farmers [ print "farmer's total yield (potato-farmers_yield-estimated_russet-conventional):" ]
+        if sellers = potato_farmers [ print potato-farmers_yield-estimated_russet-conventional ]
+        print "updated total yield promised"
+        print potatoes-russet-conventional-fresh-promised
+        print "-------------------------------------------------------" 
+        print " " ]  
+        
+      ask my-buyer [
+        set potatoes-russet-conventional-fresh_contract-space-available ( potatoes-russet-conventional-fresh_contract-space-available - contracted-this-time )
+        set potatoes-russet-conventional-fresh_my-incoming-total ( potatoes-russet-conventional-fresh_my-incoming-total + contracted-this-time)
+        if debug-mode = true [
+          print " "
+          print "my buyer's updated space available:"
+          print potatoes-russet-conventional-fresh_contract-space-available ] ]              
+      ]
+      
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "end of while loop"
+      print "-------------------------------------------------------"
+      print " " ]
+      
+      ]   
+    
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "END OF NEGOTIATIONS FOR THIS AGENT"
+      print "-------------------------------------------------------"
+      print " " ]
+    
+  ]
+  
+  
+;     ------ (negotiations end here. final print statements below)
+  
+  
+  if debug-mode = TRUE [
+    print " "
+    print "CONTRACT NEGOTIATION RESULTS:"
+    print " "
+    print "printing price debug table:"
+    debugMatrix potato-table_russet-conventional POTATO_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+    print "printing quantity debug table:"
+    debugMatrix potato-table_russet-conventional POTATO_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+  ask buyers [ 
+      let tmp word id ": " 
+      print word tmp potatoes-russet-conventional-fresh_contract-space-available ] ]
+  
+end 
+
+
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+
+
+to priceAdjustments_russetConventionalProcessed [ buyers buyer_count ]
+ 
+  if year != 1 [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) ) 
+    let comparison-group n-of subgroup-number buyers
+    let lowest-buyer min-one-of comparison-group [ potatoes-russet-conventional-processed_price-to-buy ]
+    let highest-buyer max-one-of comparison-group [ potatoes-russet-conventional-processed_price-to-buy ]
+    ask lowest-buyer [ set potatoes-russet-conventional-processed_price-to-buy ( potatoes-russet-conventional-processed_price-to-buy * 1.1 ) ]      
+    ask highest-buyer [ set potatoes-russet-conventional-processed_price-to-buy ( potatoes-russet-conventional-processed_price-to-buy * .9 ) ] ]
+  
+end
+
+to-report contractSpaceAvailable_russetConventionalProcessed [ buyers  debug ]
+  
+  ask buyers [
+    set potatoes-russet-conventional-processed_contract-space-available ( potatoes-russet-conventional-processed_inventory-maximum - potatoes-russet-conventional-processed_inventory-current ) 
+    if debug = TRUE [ print " " print agent-name print "contract space available: " print potatoes-russet-conventional-processed_contract-space-available print " " ] ]
+  report buyers
+    
+end
+
+to setContracts_russetConventionalProcessed [ sellers  buyers  buyer_count  loyalty]
+  
+  if debug-mode = TRUE [ 
+    print " "
+    print "------------------------------------------------------"
+    print "CONTRACTING STEP:"
+    let tmp word sellers " sell to " 
+    print word tmp buyers
+    print "------------------------------------------------------" ]
+  
+  priceAdjustments_russetConventionalProcessed buyers buyer_count
+  ask buyers [ set potatoes-russet-conventional-processed_contract-space-available ( potatoes-russet-conventional-processed_inventory-maximum - potatoes-russet-conventional-processed_inventory-current ) ]
+  ;set buyers contractSpaceAvailable_russetConventionalProcessed buyers  debug-mode
+
+  ask sellers [
+    
+    if debug-mode = TRUE [ 
+        print " "  
+        print "-------------------------------------------------------"
+        print "beginning negotation"
+        print "-------------------------------------------------------"
+        print " " ]
+    
+    let potatoes-russet-conventional-processed-quantity-estimate 0
+    let contracted-this-time 0
+
+    if sellers = potato_processors [ set potatoes-russet-conventional-processed-quantity-estimate ( potatoes-russet-conventional-fresh_my-incoming-total * .8 ) ]
+    if sellers = distributors [ set potatoes-russet-conventional-processed-quantity-estimate potatoes-russet-conventional-processed_my-incoming-total ]
+    if debug-mode = TRUE [ 
+      print " "
+      print agent-name
+      print "estimated quantity available to contract this step (potatoes-russet-conventional-processed-quantity-estimate):"
+      print potatoes-russet-conventional-processed-quantity-estimate ]
+    
+    while [ ( potatoes-russet-conventional-processed-promised < potatoes-russet-conventional-processed-quantity-estimate ) and ( any? buyers with [ potatoes-russet-conventional-processed_contract-space-available > 0 ] ) ] [
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "beginning while loop"
+        print "-------------------------------------------------------"
+        print " " 
+        print "we are thinking about buyers!"
+        print "seller name: "
+        print agent-name
+        print "seller id:"
+        print id
+        print "potatoes-russet-conventional-processed-promised:"
+        print potatoes-russet-conventional-processed-promised
+        print "potatoes-russet-conventional-processed-quantity-estimate:"
+        print potatoes-russet-conventional-processed-quantity-estimate ]
+
+      let buyers-with-capacity ( buyers with [ potatoes-russet-conventional-processed_contract-space-available > 0 ] )
+      if debug-mode = true [
+        print " "
+        print "buyers with capacity:"
+        print buyers-with-capacity ]
+      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers ] ]  
+        [ set bidding_buyers buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers
+            print "who numbers of bidding buyers:"
+            print [who] of bidding_buyers ] ]
+      
+      let my-buyer n-of 1 ( bidding_buyers with-max [ potatoes-russet-conventional-processed_price-to-buy ] )   
+         
+      set potatoes-russet-conventional-processed_price-to-sell item 0 [ potatoes-russet-conventional-processed_price-to-buy ] of my-buyer
+        if debug-mode = true [
+          print " "
+          print "price to buy:"
+          print [ potatoes-russet-conventional-processed_price-to-buy ] of my-buyer]        
+        
+      let col-id id
+      let row-id 0
+      if debug-mode = true [
+        print " "
+        print "my buyer's name:"
+        print [ agent-name ] of my-buyer
+        print "my buyer's id:"
+        print [ id ] of my-buyer
+        print "my buyer's space available:"
+        print [ potatoes-russet-conventional-processed_contract-space-available ] of my-buyer ]
+      ask my-buyer [
+        set row-id id ]
+
+        
+      let rounded-price ( precision ( potatoes-russet-conventional-processed_price-to-sell ) 2 )
+      table_set potato-table_russet-conventional-processed row-id col-id POTATO_PRICE rounded-price debug-mode        
+         
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "end of price negotatiations - moving on to quantity negotiation"
+        print "-------------------------------------------------------"
+        print " " ]
+              
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+      let contract-space-available item 0 ( [ potatoes-russet-conventional-processed_contract-space-available ] of my-buyer )
+      let seller_potatoes-available ( potatoes-russet-conventional-processed-quantity-estimate - potatoes-russet-conventional-processed-promised )
+        
+      ifelse contract-space-available >= seller_potatoes-available
+        [ set contracted-this-time seller_potatoes-available ]
+        [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]
+        
+      if debug-mode = TRUE [
+        print " "
+        print "updated yield promised from matrix"
+        print potatoes-russet-conventional-processed-promised ]  
+        
+      table_create_and_sum potato-table_russet-conventional-processed row-id col-id POTATO_QUANTITY contracted-this-time debug-mode
+      table_create_and_sum potato-table_russet-conventional-processed row-id col-id POTATO_OUTSTANDING_QUANTITY contracted-this-time debug-mode
+        
+      if debug-mode = TRUE [
+        print " "
+        print "yield promised before this contract"
+        print potatoes-russet-conventional-processed-promised
+        print "amount contracted this time"
+        print contracted-this-time ]
+        
+      set potatoes-russet-conventional-processed-promised ( potatoes-russet-conventional-processed-promised + contracted-this-time )   
+        
+      if debug-mode = TRUE [
+        print " "
+        print "-------------------------------------------------------"
+        if sellers = potato_farmers [ print "farmer's total yield (potato-farmers_yield-estimated_russet-conventional):" ]
+        if sellers = potato_farmers [ print potato-farmers_yield-estimated_russet-conventional ]
+        print "updated total yield promised"
+        print potatoes-russet-conventional-processed-promised
+        print "-------------------------------------------------------" 
+        print " " ]  
+        
+      ask my-buyer [
+        set potatoes-russet-conventional-processed_contract-space-available ( potatoes-russet-conventional-processed_contract-space-available - contracted-this-time )
+        set potatoes-russet-conventional-processed_my-incoming-total ( potatoes-russet-conventional-processed_my-incoming-total + contracted-this-time)
+        if debug-mode = true [
+          print " "
+          print "my buyer's updated space available:"
+          print potatoes-russet-conventional-processed_contract-space-available ] ]
+              
+      ]
+      
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "end of while loop"
+      print "-------------------------------------------------------"
+      print " " ]
+      
+      ]   
+    
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "END OF NEGOTIATIONS FOR THIS AGENT"
+      print "-------------------------------------------------------"
+      print " " ]
+ 
+  ]
+  
+  
+;     ------ (negotiations end here. final print statements below)
+  
+  
+  if debug-mode = TRUE [
+    print " "
+    print "CONTRACT NEGOTIATION RESULTS:"
+    print " "
+    print "printing price debug table:"
+    debugMatrix potato-table_russet-conventional-processed POTATO_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+    print "printing quantity debug table:"
+    debugMatrix potato-table_russet-conventional-processed POTATO_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+  ask buyers [ 
+      let tmp word id ": " 
+      print word tmp potatoes-russet-conventional-processed_contract-space-available ] ]
+  
+end 
+
+
+; END OF THIS POTATO TYPE
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+; START OF NEW POTATO TYPE
+
+
+to priceAdjustments_russetOrganicFresh [ buyers  buyer_count ]
+ 
+  ask buyers [
+  if year != 1 [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) ) 
+    let comparison-group n-of subgroup-number buyers
+    let lowest-buyer min-one-of comparison-group [ potatoes-russet-organic-fresh_price-to-buy ] 
+    let highest-buyer max-one-of comparison-group [ potatoes-russet-organic-fresh_price-to-buy ]
+    ask lowest-buyer [ set potatoes-russet-organic-fresh_price-to-buy ( potatoes-russet-organic-fresh_price-to-buy * 1.1 ) ]      
+    ask highest-buyer [ set potatoes-russet-organic-fresh_price-to-buy ( potatoes-russet-organic-fresh_price-to-buy * .9 ) ] ] ]
+  
+end
+
+
+to-report contractSpaceAvailable_russetOrganicFresh [ buyers  debug ]
+  
+  ask buyers [
+    set potatoes-russet-organic-fresh_contract-space-available ( potatoes-russet-organic-fresh_inventory-maximum - potatoes-russet-organic-fresh_inventory-current ) 
+    if debug = TRUE [ print " " print agent-name print "contract space available: " print potatoes-russet-organic-fresh_contract-space-available print " " ] ]
+  report buyers
+    
+end
+
+
+to setContracts_russetOrganicFresh [ sellers  buyers  buyer_count  loyalty ]
+  
+  if debug-mode = TRUE [ 
+    print " "
+    print "------------------------------------------------------"
+    print "CONTRACTING STEP:"
+    let tmp word sellers " sell to " 
+    print word tmp buyers
+    print "------------------------------------------------------" ]
+  
+  priceAdjustments_russetOrganicFresh  buyers buyer_count
+  ask buyers [ set potatoes-russet-organic-fresh_contract-space-available ( potatoes-russet-organic-fresh_inventory-maximum - potatoes-russet-organic-fresh_inventory-current ) ]
+  ;set buyers contractSpaceAvailable_russetOrganicFresh buyers debug-mode
+
+  ask sellers [
+    
+    if debug-mode = TRUE [ 
+        print " "  
+        print "-------------------------------------------------------"
+        print "beginning negotation"
+        print "-------------------------------------------------------"
+        print " " ]
+    
+    let potatoes-russet-organic-quantity-estimate 0
+    let contracted-this-time 0
+    
+    if sellers != potato_farmers [
+      if potatoes-russet-organic-fresh_my-incoming-total < 0 [ set potatoes-russet-organic-fresh_my-incoming-total 0 ] ]
+    
+    ifelse sellers = potato_farmers [
+      let transaction-percent 0        
+      if buyers = potato_shippers [ set transaction-percent .35 ]
+      if buyers = potato_repackers [ set transaction-percent 1 ]
+      if week = 31 [
+        set potatoes-russet-organic-quantity-estimate ( ( potato-farmers_yield-estimated_russet-organic * .5 ) * transaction-percent ) ] ; half of estimated yield promised during 6-month prime contract season
+      let inventory-for-off-season 0
+      if week = 5 [
+        set inventory-for-off-season potatoes-russet-organic-fresh_inventory-current 
+        set potatoes-russet-organic-quantity-estimate ( ( inventory-for-off-season * transaction-percent ) * .5 ) ] ; half of actual inventory at start of off-season promised during both 3-month off-season contract seasons
+      if week = 18 [ 
+        set potatoes-russet-organic-quantity-estimate ( ( inventory-for-off-season * transaction-percent ) * .5 ) ] ; half of actual inventory at start of off-season promised during both 3-month off-season contract seasons
+      if debug-mode = TRUE [
+        print "farmer's total yield (potato-farmers_yield-estimated_russet-organic):"
+        print potato-farmers_yield-estimated_russet-organic ] ]
+    [ ifelse sellers = potato_shippers [
+        let transaction-percent 0
+        if buyers = potato_processors [ set transaction-percent .5 ]
+        if buyers = distributors [ set transaction-percent 1 ]         
+        set potatoes-russet-organic-quantity-estimate ( potatoes-russet-organic-fresh_my-incoming-total * transaction-percent ) ] ; ( ( potatoes-russet-organic-fresh_inventory-maximum - potatoes-russet-organic-fresh_contract-space-available ) * transaction-percent )]
+      [ set potatoes-russet-organic-quantity-estimate potatoes-russet-organic-fresh_my-incoming-total ] ] ; ( potatoes-russet-organic-fresh_inventory-maximum - potatoes-russet-organic-fresh_contract-space-available ) ] ]
+
+    if debug-mode = TRUE [ 
+      print " "
+      print agent-name
+      print "estimated quantity available to contract this step (potatoes-russet-organic-quantity-estimate):"
+      print potatoes-russet-organic-quantity-estimate ]
+    
+    while [ ( potatoes-russet-organic-fresh-promised < potatoes-russet-organic-quantity-estimate ) and ( any? buyers with [ potatoes-russet-organic-fresh_contract-space-available > 0 ] ) ] [
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "beginning while loop"
+        print "-------------------------------------------------------"
+        print " " ]
+      
+      if debug-mode = true [
+        print " "
+        print "we are thinking about buyers!"
+        print "seller name: "
+        print agent-name
+        print "seller id:"
+        print id
+        print "potatoes-russet-organic-fresh-promised:"
+        print potatoes-russet-organic-fresh-promised
+        print "potatoes-russet-organic-quantity-estimate:"
+        print potatoes-russet-organic-quantity-estimate ]
+
+      let buyers-with-capacity ( buyers with [ potatoes-russet-organic-fresh_contract-space-available > 0 ] )
+      if debug-mode = true [
+        print " "
+        print "buyers with capacity:"
+        print buyers-with-capacity ]
+      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers ] ]  
+        [ set bidding_buyers buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers
+            print "who numbers of bidding buyers:"
+            print [who] of bidding_buyers ] ]
+
+       let my-buyer n-of 1 ( bidding_buyers with-max [ potatoes-russet-organic-fresh_price-to-buy ] )
+        
+      set potatoes-russet-organic-fresh_price-to-sell item 0 [ potatoes-russet-organic-fresh_price-to-buy ] of my-buyer
+        
+      ; GFPP AND SMALL POTATO PRICE CHANGES HAPPEN HERE-- only apply to potatoes purchased by dps, rest of potatoes get same pricing as usual
+      ; if buyer is dps and scenario is fresh or gfpp set price to distrib from those scenarios
+      if buyers = dps_buyers and potato-scenario = "gfpp" [
+          set potatoes-russet-organic-fresh_price-to-sell random-normal potato-organic-russet_gfpp-price-shipper-receives-avg potato-organic-russet_gfpp-price-shipper-receives-stdev
+        ]
+      if buyers = dps_buyers and potato-scenario = "small-potatoes" [
+          set potatoes-russet-organic-fresh_price-to-sell random-normal potato-organic-russet_gfpp-price-shipper-receives-avg potato-organic-russet_gfpp-price-shipper-receives-stdev
+        ]
+        
+        
+      if ( week = 5 ) or ( week = 18 ) 
+        [ set potatoes-russet-organic-fresh_price-to-sell ( potatoes-russet-organic-fresh_price-to-sell * 1.1 ) ] ; prices are 10% higher during the off-season
+      if debug-mode = true [
+        print " "
+        print "price to buy:"
+        print [ potatoes-russet-organic-fresh_price-to-buy ] of my-buyer]
+        
+      let col-id id
+      let row-id 0
+      if debug-mode = true [ 
+        print " "
+        print "my buyer's name:"
+        print [ agent-name ] of my-buyer
+        print "my buyer's id:"
+        print [ id ] of my-buyer
+        print "my buyer's space available:"
+        print [ potatoes-russet-organic-fresh_contract-space-available ] of my-buyer ]
+      ask my-buyer [
+        set row-id id ]
+
+      let rounded-price ( precision ( potatoes-russet-organic-fresh_price-to-sell ) 2 )
+      table_set potato-table_russet-organic row-id col-id POTATO_PRICE rounded-price debug-mode
+         
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "end of price negotatiations - moving on to quantity negotiation"
+        print "-------------------------------------------------------"
+        print " " ]
+              
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+      let contract-space-available item 0 ( [ potatoes-russet-organic-fresh_contract-space-available ] of my-buyer )
+      let seller_potatoes-available ( potatoes-russet-organic-quantity-estimate - potatoes-russet-organic-fresh-promised )
+        
+      ifelse contract-space-available >= seller_potatoes-available
+        [ set contracted-this-time seller_potatoes-available ]
+        [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]  
+        
+      if debug-mode = TRUE [
+        print " "
+        print "updated yield promised from matrix"
+        print potatoes-russet-organic-fresh-promised ]  
+        
+
+      table_create_and_sum potato-table_russet-organic row-id col-id POTATO_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to potato quantity table
+        
+      ;; adding code to initialize outstanding potato table
+      table_create_and_sum potato-table_russet-organic row-id col-id POTATO_OUTSTANDING_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to potato quantity table
+        
+      if debug-mode = TRUE [
+        print " "
+        print "yield promised before this contract"
+        print potatoes-russet-organic-fresh-promised
+        print "amount contracted this time"
+        print contracted-this-time ]
+        
+      set potatoes-russet-organic-fresh-promised ( potatoes-russet-organic-fresh-promised + contracted-this-time )   
+        
+      if debug-mode = TRUE [
+        print " "
+        print "-------------------------------------------------------"
+        if sellers = potato_farmers [ print "farmer's total yield (potato-farmers_yield-estimated_russet-organic):" ]
+        if sellers = potato_farmers [ print potato-farmers_yield-estimated_russet-organic ]
+        print "updated total yield promised"
+        print potatoes-russet-organic-fresh-promised
+        print "-------------------------------------------------------" 
+        print " " ]  
+        
+      ask my-buyer [
+        set potatoes-russet-organic-fresh_contract-space-available ( potatoes-russet-organic-fresh_contract-space-available - contracted-this-time )
+        set potatoes-russet-organic-fresh_my-incoming-total ( potatoes-russet-organic-fresh_my-incoming-total + contracted-this-time)
+        if debug-mode = true [
+          print " "
+          print "my buyer's updated space available:"
+          print potatoes-russet-organic-fresh_contract-space-available ] ]              
+      ]
+      
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "end of while loop"
+      print "-------------------------------------------------------"
+      print " " ]
+      
+      ]   
+    
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "END OF NEGOTIATIONS FOR THIS AGENT"
+      print "-------------------------------------------------------"
+      print " " ]
+  
+  ]
+  
+  
+;     ------ (negotiations end here. final print statements below)
+  
+  
+  if debug-mode = TRUE [
+    print " "
+    print "CONTRACT NEGOTIATION RESULTS:"
+    print " "
+    print "printing price debug table:"
+    debugMatrix potato-table_russet-organic POTATO_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+    print "printing quantity debug table:"
+    debugMatrix potato-table_russet-organic POTATO_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+  ask buyers [ 
+      let tmp word id ": " 
+      print word tmp potatoes-russet-organic-fresh_contract-space-available ] ]
+  
+end 
+
+
+; END OF THIS POTATO TYPE
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+; START OF NEW POTATO TYPE
+
+
+to priceAdjustments_purpleConventionalFresh [ buyers  buyer_count ]
+ 
+  ask buyers [
+  if year != 1 [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) ) 
+    let comparison-group n-of subgroup-number buyers
+    let lowest-buyer min-one-of comparison-group [ potatoes-purple-conventional-fresh_price-to-buy ] 
+    let highest-buyer max-one-of comparison-group [ potatoes-purple-conventional-fresh_price-to-buy ]
+    ask lowest-buyer [ set potatoes-purple-conventional-fresh_price-to-buy ( potatoes-purple-conventional-fresh_price-to-buy * 1.1 ) ]      
+    ask highest-buyer [ set potatoes-purple-conventional-fresh_price-to-buy ( potatoes-purple-conventional-fresh_price-to-buy * .9 ) ] ] ]
+  
+end
+
+
+to-report contractSpaceAvailable_purpleConventionalFresh [ buyers  debug ]
+  
+  ask buyers [
+    set potatoes-purple-conventional-fresh_contract-space-available ( potatoes-purple-conventional-fresh_inventory-maximum - potatoes-purple-conventional-fresh_inventory-current ) 
+    if debug = TRUE [ print " " print agent-name print "contract space available: " print potatoes-purple-conventional-fresh_contract-space-available print " " ] ]
+  report buyers
+    
+end
+
+
+to setContracts_purpleConventionalFresh [ sellers  buyers  buyer_count  loyalty ]
+  
+  if debug-mode = TRUE [ 
+    print " "
+    print "------------------------------------------------------"
+    print "CONTRACTING STEP:"
+    let tmp word sellers " sell to " 
+    print word tmp buyers
+    print "------------------------------------------------------" ]
+  
+  priceAdjustments_purpleConventionalFresh  buyers buyer_count
+  ask buyers [ set potatoes-purple-conventional-fresh_contract-space-available ( potatoes-purple-conventional-fresh_inventory-maximum - potatoes-purple-conventional-fresh_inventory-current ) ]
+  ;set buyers contractSpaceAvailable_purpleConventionalFresh buyers debug-mode
+
+  ask sellers [
+    
+    if debug-mode = TRUE [ 
+        print " "  
+        print "-------------------------------------------------------"
+        print "beginning negotation"
+        print "-------------------------------------------------------"
+        print " " ]
+    
+    let potatoes-purple-conventional-quantity-estimate 0
+    let contracted-this-time 0
+    
+    if sellers != potato_farmers [
+      if potatoes-purple-conventional-fresh_my-incoming-total < 0 [ set potatoes-purple-conventional-fresh_my-incoming-total 0 ] ]
+    
+    ifelse sellers = potato_farmers [
+      let transaction-percent 0        
+      if buyers = potato_shippers [ set transaction-percent .35 ]
+      if buyers = potato_repackers [ set transaction-percent 1 ]
+      if week = 31 [
+        set potatoes-purple-conventional-quantity-estimate ( ( potato-farmers_yield-estimated_purple-conventional * .5 ) * transaction-percent ) ] ; half of estimated yield promised during 6-month prime contract season
+      let inventory-for-off-season 0
+      if week = 5 [
+        set inventory-for-off-season potatoes-purple-conventional-fresh_inventory-current 
+        set potatoes-purple-conventional-quantity-estimate ( ( inventory-for-off-season * transaction-percent ) * .5 ) ] ; half of actual inventory at start of off-season promised during both 3-month off-season contract seasons
+      if week = 18 [ 
+        set potatoes-purple-conventional-quantity-estimate ( ( inventory-for-off-season * transaction-percent ) * .5 ) ] ; half of actual inventory at start of off-season promised during both 3-month off-season contract seasons
+      if debug-mode = TRUE [
+        print "farmer's total yield (potato-farmers_yield-estimated_purple-conventional):"
+        print potato-farmers_yield-estimated_purple-conventional ] ]
+    [ ifelse sellers = potato_shippers [
+        let transaction-percent 0
+        if buyers = potato_processors [ set transaction-percent .5 ]
+        if buyers = distributors [ set transaction-percent 1 ]         
+        set potatoes-purple-conventional-quantity-estimate ( potatoes-purple-conventional-fresh_my-incoming-total * transaction-percent ) ] ; ( ( potatoes-purple-conventional-fresh_inventory-maximum - potatoes-purple-conventional-fresh_contract-space-available ) * transaction-percent )]
+      [ set potatoes-purple-conventional-quantity-estimate potatoes-purple-conventional-fresh_my-incoming-total ] ] 
+
+    if debug-mode = TRUE [ 
+      print " "
+      print agent-name
+      print "estimated quantity available to contract this step (potatoes-purple-conventional-quantity-estimate):"
+      print potatoes-purple-conventional-quantity-estimate ]
+    
+    while [ ( potatoes-purple-conventional-fresh-promised < potatoes-purple-conventional-quantity-estimate ) and ( any? buyers with [ potatoes-purple-conventional-fresh_contract-space-available > 0 ] ) ] [
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "beginning while loop"
+        print "-------------------------------------------------------"
+        print " " ]
+      
+      if debug-mode = true [
+        print " "
+        print "we are thinking about buyers!"
+        print "seller name: "
+        print agent-name
+        print "seller id:"
+        print id
+        print "potatoes-purple-conventional-fresh-promised:"
+        print potatoes-purple-conventional-fresh-promised
+        print "potatoes-purple-conventional-quantity-estimate:"
+        print potatoes-purple-conventional-quantity-estimate ]
+
+      let buyers-with-capacity ( buyers with [ potatoes-purple-conventional-fresh_contract-space-available > 0 ] )
+      if debug-mode = true [
+        print " "
+        print "buyers with capacity:"
+        print buyers-with-capacity ]
+      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers ] ]  
+        [ set bidding_buyers buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers
+            print "who numbers of bidding buyers:"
+            print [who] of bidding_buyers ] ]
+
+       let my-buyer n-of 1 ( bidding_buyers with-max [ potatoes-purple-conventional-fresh_price-to-buy ] )
+        
+      set potatoes-purple-conventional-fresh_price-to-sell item 0 [ potatoes-purple-conventional-fresh_price-to-buy ] of my-buyer
+        
+      ; if buyer is dps and scenario is fresh or gfpp set price to distrib from those scenarios
+      if buyers = dps_buyers and potato-scenario = "gfpp" [
+          set potatoes-purple-conventional-fresh_price-to-sell random-normal potato-conventional-purple_gfpp-price-shipper-receives-avg potato-conventional-purple_gfpp-price-shipper-receives-stdev
+        ]
+      if buyers = dps_buyers and potato-scenario = "small-potatoes" [
+          set potatoes-purple-conventional-fresh_price-to-sell random-normal potato-conventional-purple_gfpp-price-shipper-receives-avg potato-conventional-purple_gfpp-price-shipper-receives-stdev
+        ]
+        
+        
+      if ( week = 5 ) or ( week = 18 ) 
+        [ set potatoes-purple-conventional-fresh_price-to-sell ( potatoes-purple-conventional-fresh_price-to-sell * 1.1 ) ] ; prices are 10% higher during the off-season
+      if debug-mode = true [
+        print " "
+        print "price to buy:"
+        print [ potatoes-purple-conventional-fresh_price-to-buy ] of my-buyer]
+        
+      let col-id id
+      let row-id 0
+      if debug-mode = true [ 
+        print " "
+        print "my buyer's name:"
+        print [ agent-name ] of my-buyer
+        print "my buyer's id:"
+        print [ id ] of my-buyer
+        print "my buyer's space available:"
+        print [ potatoes-purple-conventional-fresh_contract-space-available ] of my-buyer ]
+      ask my-buyer [
+        set row-id id ]
+  
+      let rounded-price ( precision ( potatoes-purple-conventional-fresh_price-to-sell ) 2 )
+      table_set potato-table_purple-conventional row-id col-id POTATO_PRICE rounded-price debug-mode
+         
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "end of price negotatiations - moving on to quantity negotiation"
+        print "-------------------------------------------------------"
+        print " " ]
+              
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+      let contract-space-available item 0 ( [ potatoes-purple-conventional-fresh_contract-space-available ] of my-buyer )
+      let seller_potatoes-available ( potatoes-purple-conventional-quantity-estimate - potatoes-purple-conventional-fresh-promised )
+        
+      ifelse contract-space-available >= seller_potatoes-available
+        [ set contracted-this-time seller_potatoes-available ]
+        [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]  
+        
+      if debug-mode = TRUE [
+        print " "
+        print "updated yield promised from matrix"
+        print potatoes-purple-conventional-fresh-promised ]  
+        
+      table_create_and_sum potato-table_purple-conventional row-id col-id POTATO_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to potato quantity table
+        
+      ;; adding code to initialize outstanding potato table
+      table_create_and_sum potato-table_purple-conventional row-id col-id POTATO_OUTSTANDING_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to potato quantity table
+        
+      if debug-mode = TRUE [
+        print " "
+        print "yield promised before this contract"
+        print potatoes-purple-conventional-fresh-promised
+        print "amount contracted this time"
+        print contracted-this-time ]
+        
+      set potatoes-purple-conventional-fresh-promised ( potatoes-purple-conventional-fresh-promised + contracted-this-time )   
+        
+      if debug-mode = TRUE [
+        print " "
+        print "-------------------------------------------------------"
+        if sellers = potato_farmers [ print "farmer's total yield (potato-farmers_yield-estimated_purple-conventional):" ]
+        if sellers = potato_farmers [ print potato-farmers_yield-estimated_purple-conventional ]
+        print "updated total yield promised"
+        print potatoes-purple-conventional-fresh-promised
+        print "-------------------------------------------------------" 
+        print " " ]  
+        
+      ask my-buyer [
+        set potatoes-purple-conventional-fresh_contract-space-available ( potatoes-purple-conventional-fresh_contract-space-available - contracted-this-time )
+        set potatoes-purple-conventional-fresh_my-incoming-total ( potatoes-purple-conventional-fresh_my-incoming-total + contracted-this-time)
+        if debug-mode = true [
+          print " "
+          print "my buyer's updated space available:"
+          print potatoes-purple-conventional-fresh_contract-space-available ] ]              
+      ]
+      
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "end of while loop"
+      print "-------------------------------------------------------"
+      print " " ]
+      
+      ]   
+    
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "END OF NEGOTIATIONS FOR THIS AGENT"
+      print "-------------------------------------------------------"
+      print " " ]
+  
+  ]
+  
+  
+;     ------ (negotiations end here. final print statements below)
+  
+  
+  if debug-mode = TRUE [
+    print " "
+    print "CONTRACT NEGOTIATION RESULTS:"
+    print " "
+    print "printing price debug table:"
+    debugMatrix potato-table_purple-conventional POTATO_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+    print "printing quantity debug table:"
+    debugMatrix potato-table_purple-conventional POTATO_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+  ask buyers [ 
+      let tmp word id ": " 
+      print word tmp potatoes-purple-conventional-fresh_contract-space-available ] ]
+  
+end 
+
+
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+
+
+to priceAdjustments_purpleConventionalProcessed [ buyers buyer_count ]
+ 
+  if year != 1 [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) ) 
+    let comparison-group n-of subgroup-number buyers
+    let lowest-buyer min-one-of comparison-group [ potatoes-purple-conventional-processed_price-to-buy ]
+    let highest-buyer max-one-of comparison-group [ potatoes-purple-conventional-processed_price-to-buy ]
+    ask lowest-buyer [ set potatoes-purple-conventional-processed_price-to-buy ( potatoes-purple-conventional-processed_price-to-buy * 1.1 ) ]      
+    ask highest-buyer [ set potatoes-purple-conventional-processed_price-to-buy ( potatoes-purple-conventional-processed_price-to-buy * .9 ) ] ]
+  
+end
+
+to-report contractSpaceAvailable_purpleConventionalProcessed [ buyers  debug ]
+  
+  ask buyers [
+    set potatoes-purple-conventional-processed_contract-space-available ( potatoes-purple-conventional-processed_inventory-maximum - potatoes-purple-conventional-processed_inventory-current ) 
+    if debug = TRUE [ print " " print agent-name print "contract space available: " print potatoes-purple-conventional-processed_contract-space-available print " " ] ]
+  report buyers
+    
+end
+
+to setContracts_purpleConventionalProcessed [ sellers  buyers  buyer_count  loyalty]
+  
+  if debug-mode = TRUE [ 
+    print " "
+    print "------------------------------------------------------"
+    print "CONTRACTING STEP:"
+    let tmp word sellers " sell to " 
+    print word tmp buyers
+    print "------------------------------------------------------" ]
+  
+  priceAdjustments_purpleConventionalProcessed buyers buyer_count
+  ask buyers [ set potatoes-purple-conventional-processed_contract-space-available ( potatoes-purple-conventional-processed_inventory-maximum - potatoes-purple-conventional-processed_inventory-current ) ]
+  ;set buyers contractSpaceAvailable_purpleConventionalProcessed buyers  debug-mode
+
+  ask sellers [
+    
+    if debug-mode = TRUE [ 
+        print " "  
+        print "-------------------------------------------------------"
+        print "beginning negotation"
+        print "-------------------------------------------------------"
+        print " " ]
+    
+    let potatoes-purple-conventional-processed-quantity-estimate 0
+    let contracted-this-time 0
+
+    if sellers = potato_processors [ set potatoes-purple-conventional-processed-quantity-estimate ( potatoes-purple-conventional-fresh_my-incoming-total * .8 ) ]
+    if sellers = distributors [ set potatoes-purple-conventional-processed-quantity-estimate potatoes-purple-conventional-processed_my-incoming-total ]
+    if debug-mode = TRUE [ 
+      print " "
+      print agent-name
+      print "estimated quantity available to contract this step (potatoes-purple-conventional-processed-quantity-estimate):"
+      print potatoes-purple-conventional-processed-quantity-estimate ]
+    
+    while [ ( potatoes-purple-conventional-processed-promised < potatoes-purple-conventional-processed-quantity-estimate ) and ( any? buyers with [ potatoes-purple-conventional-processed_contract-space-available > 0 ] ) ] [
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "beginning while loop"
+        print "-------------------------------------------------------"
+        print " " 
+        print "we are thinking about buyers!"
+        print "seller name: "
+        print agent-name
+        print "seller id:"
+        print id
+        print "potatoes-purple-conventional-processed-promised:"
+        print potatoes-purple-conventional-processed-promised
+        print "potatoes-purple-conventional-processed-quantity-estimate:"
+        print potatoes-purple-conventional-processed-quantity-estimate ]
+
+      let buyers-with-capacity ( buyers with [ potatoes-purple-conventional-processed_contract-space-available > 0 ] )
+      if debug-mode = true [
+        print " "
+        print "buyers with capacity:"
+        print buyers-with-capacity ]
+      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers ] ]  
+        [ set bidding_buyers buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers
+            print "who numbers of bidding buyers:"
+            print [who] of bidding_buyers ] ]
+      
+      let my-buyer n-of 1 ( bidding_buyers with-max [ potatoes-purple-conventional-processed_price-to-buy ] )   
+        
+      set potatoes-purple-conventional-processed_price-to-sell item 0 [ potatoes-purple-conventional-processed_price-to-buy ] of my-buyer
+        if debug-mode = true [
+          print " "
+          print "price to buy:"
+          print [ potatoes-purple-conventional-processed_price-to-buy ] of my-buyer]        
+        
+      let col-id id
+      let row-id 0
+      if debug-mode = true [
+        print " "
+        print "my buyer's name:"
+        print [ agent-name ] of my-buyer
+        print "my buyer's id:"
+        print [ id ] of my-buyer
+        print "my buyer's space available:"
+        print [ potatoes-purple-conventional-processed_contract-space-available ] of my-buyer ]
+      ask my-buyer [
+        set row-id id ]
+ 
+      let rounded-price ( precision ( potatoes-purple-conventional-processed_price-to-sell ) 2 )
+      table_set potato-table_purple-conventional-processed row-id col-id POTATO_PRICE rounded-price debug-mode        
+         
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "end of price negotatiations - moving on to quantity negotiation"
+        print "-------------------------------------------------------"
+        print " " ]
+              
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+      let contract-space-available item 0 ( [ potatoes-purple-conventional-processed_contract-space-available ] of my-buyer )
+      let seller_potatoes-available ( potatoes-purple-conventional-processed-quantity-estimate - potatoes-purple-conventional-processed-promised )
+        
+      ifelse contract-space-available >= seller_potatoes-available
+        [ set contracted-this-time seller_potatoes-available ]
+        [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]
+
+
+      if debug-mode = TRUE [
+        print " "
+        print "updated yield promised from matrix"
+        print potatoes-purple-conventional-processed-promised ]  
+        
+      table_create_and_sum potato-table_purple-conventional-processed row-id col-id POTATO_QUANTITY contracted-this-time debug-mode
+      table_create_and_sum potato-table_purple-conventional-processed row-id col-id POTATO_OUTSTANDING_QUANTITY contracted-this-time debug-mode
+        
+      if debug-mode = TRUE [
+        print " "
+        print "yield promised before this contract"
+        print potatoes-purple-conventional-processed-promised
+        print "amount contracted this time"
+        print contracted-this-time ]
+        
+      set potatoes-purple-conventional-processed-promised ( potatoes-purple-conventional-processed-promised + contracted-this-time )   
+        
+      if debug-mode = TRUE [
+        print " "
+        print "-------------------------------------------------------"
+        if sellers = potato_farmers [ print "farmer's total yield (potato-farmers_yield-estimated_purple-conventional):" ]
+        if sellers = potato_farmers [ print potato-farmers_yield-estimated_purple-conventional ]
+        print "updated total yield promised"
+        print potatoes-purple-conventional-processed-promised
+        print "-------------------------------------------------------" 
+        print " " ]  
+        
+      ask my-buyer [
+        set potatoes-purple-conventional-processed_contract-space-available ( potatoes-purple-conventional-processed_contract-space-available - contracted-this-time )
+        set potatoes-purple-conventional-processed_my-incoming-total ( potatoes-purple-conventional-processed_my-incoming-total + contracted-this-time)
+        if debug-mode = true [
+          print " "
+          print "my buyer's updated space available:"
+          print potatoes-purple-conventional-processed_contract-space-available ] ]
+              
+      ]
+      
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "end of while loop"
+      print "-------------------------------------------------------"
+      print " " ]
+      
+      ]   
+    
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "END OF NEGOTIATIONS FOR THIS AGENT"
+      print "-------------------------------------------------------"
+      print " " ]
+  
+  ]
+  
+  
+;     ------ (negotiations end here. final print statements below)
+  
+  
+  if debug-mode = TRUE [
+    print " "
+    print "CONTRACT NEGOTIATION RESULTS:"
+    print " "
+;    print "printing price matrix:"
+;    print matrix:pretty-print-text contract-price-matrix
+;    print " "
+;    print "printing quantity matrix:"
+;    print matrix:pretty-print-text contract-quantity-matrix
+;    print " "
+    print "printing price debug table:"
+    debugMatrix potato-table_purple-conventional-processed POTATO_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+    print "printing quantity debug table:"
+    debugMatrix potato-table_purple-conventional-processed POTATO_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+  ask buyers [ 
+      let tmp word id ": " 
+      print word tmp potatoes-purple-conventional-processed_contract-space-available ] ]
+  
+end 
+
+
+; END OF THIS POTATO TYPE
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+; START OF NEW POTATO TYPE
+
+
+to priceAdjustments_purpleOrganicFresh [ buyers  buyer_count ]
+ 
+  ask buyers [
+  if year != 1 [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) ) 
+    let comparison-group n-of subgroup-number buyers
+    let lowest-buyer min-one-of comparison-group [ potatoes-purple-organic-fresh_price-to-buy ] 
+    let highest-buyer max-one-of comparison-group [ potatoes-purple-organic-fresh_price-to-buy ]
+    ask lowest-buyer [ set potatoes-purple-organic-fresh_price-to-buy ( potatoes-purple-organic-fresh_price-to-buy * 1.1 ) ]      
+    ask highest-buyer [ set potatoes-purple-organic-fresh_price-to-buy ( potatoes-purple-organic-fresh_price-to-buy * .9 ) ] ] ]
+  
+end
+
+
+to-report contractSpaceAvailable_purpleOrganicFresh [ buyers  debug ]
+  
+  ask buyers [
+    set potatoes-purple-organic-fresh_contract-space-available ( potatoes-purple-organic-fresh_inventory-maximum - potatoes-purple-organic-fresh_inventory-current ) 
+    if debug = TRUE [ print " " print agent-name print "contract space available: " print potatoes-purple-organic-fresh_contract-space-available print " " ] ]
+  report buyers
+    
+end
+
+
+to setContracts_purpleOrganicFresh [ sellers  buyers  buyer_count  loyalty ]
+  
+  if debug-mode = TRUE [ 
+    print " "
+    print "------------------------------------------------------"
+    print "CONTRACTING STEP:"
+    let tmp word sellers " sell to " 
+    print word tmp buyers
+    print "------------------------------------------------------" ]
+  
+  priceAdjustments_purpleOrganicFresh  buyers buyer_count
+  ask buyers [ set potatoes-purple-organic-fresh_contract-space-available ( potatoes-purple-organic-fresh_inventory-maximum - potatoes-purple-organic-fresh_inventory-current ) ] 
+  ;set buyers contractSpaceAvailable_purpleOrganicFresh buyers debug-mode
+
+  ask sellers [
+    
+    if debug-mode = TRUE [ 
+        print " "  
+        print "-------------------------------------------------------"
+        print "beginning negotation"
+        print "-------------------------------------------------------"
+        print " " ]
+    
+    let potatoes-purple-organic-quantity-estimate 0
+    let contracted-this-time 0
+    
+    if sellers != potato_farmers [
+      if potatoes-purple-organic-fresh_my-incoming-total < 0 [ set potatoes-purple-organic-fresh_my-incoming-total 0 ] ]
+    
+    ifelse sellers = potato_farmers [
+      let transaction-percent 0        
+      if buyers = potato_shippers [ set transaction-percent .35 ]
+      if buyers = potato_repackers [ set transaction-percent 1 ]
+      if week = 31 [
+        set potatoes-purple-organic-quantity-estimate ( ( potato-farmers_yield-estimated_purple-organic * .5 ) * transaction-percent ) ] ; half of estimated yield promised during 6-month prime contract season
+      let inventory-for-off-season 0
+      if week = 5 [
+        set inventory-for-off-season potatoes-purple-organic-fresh_inventory-current 
+        set potatoes-purple-organic-quantity-estimate ( ( inventory-for-off-season * transaction-percent ) * .5 ) ] ; half of actual inventory at start of off-season promised during both 3-month off-season contract seasons
+      if week = 18 [ 
+        set potatoes-purple-organic-quantity-estimate ( ( inventory-for-off-season * transaction-percent ) * .5 ) ] ; half of actual inventory at start of off-season promised during both 3-month off-season contract seasons
+      if debug-mode = TRUE [
+        print "farmer's total yield (potato-farmers_yield-estimated_purple-organic):"
+        print potato-farmers_yield-estimated_purple-organic ] ]
+    [ ifelse sellers = potato_shippers [
+        let transaction-percent 0
+        if buyers = potato_processors [ set transaction-percent .5 ]
+        if buyers = distributors [ set transaction-percent 1 ]         
+        set potatoes-purple-organic-quantity-estimate ( potatoes-purple-organic-fresh_my-incoming-total * transaction-percent ) ] ; ( ( potatoes-purple-organic-fresh_inventory-maximum - potatoes-purple-organic-fresh_contract-space-available ) * transaction-percent )]
+      [ set potatoes-purple-organic-quantity-estimate potatoes-purple-organic-fresh_my-incoming-total ] ] ; ( potatoes-purple-organic-fresh_inventory-maximum - potatoes-purple-organic-fresh_contract-space-available ) ] ]
+
+    if debug-mode = TRUE [ 
+      print " "
+      print agent-name
+      print "estimated quantity available to contract this step (potatoes-purple-organic-quantity-estimate):"
+      print potatoes-purple-organic-quantity-estimate ]
+    
+    while [ ( potatoes-purple-organic-fresh-promised < potatoes-purple-organic-quantity-estimate ) and ( any? buyers with [ potatoes-purple-organic-fresh_contract-space-available > 0 ] ) ] [
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "beginning while loop"
+        print "-------------------------------------------------------"
+        print " " ]
+      
+      if debug-mode = true [
+        print " "
+        print "we are thinking about buyers!"
+        print "seller name: "
+        print agent-name
+        print "seller id:"
+        print id
+        print "potatoes-purple-organic-fresh-promised:"
+        print potatoes-purple-organic-fresh-promised
+        print "potatoes-purple-organic-quantity-estimate:"
+        print potatoes-purple-organic-quantity-estimate ]
+
+      let buyers-with-capacity ( buyers with [ potatoes-purple-organic-fresh_contract-space-available > 0 ] )
+      if debug-mode = true [
+        print " "
+        print "buyers with capacity:"
+        print buyers-with-capacity ]
+      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers ] ]  
+        [ set bidding_buyers buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers
+            print "who numbers of bidding buyers:"
+            print [who] of bidding_buyers ] ]
+
+       let my-buyer n-of 1 ( bidding_buyers with-max [ potatoes-purple-organic-fresh_price-to-buy ] )
+        
+      set potatoes-purple-organic-fresh_price-to-sell item 0 [ potatoes-purple-organic-fresh_price-to-buy ] of my-buyer
+        
+      ; if buyer is dps and scenario is fresh or gfpp set price to distrib from those scenarios
+      if buyers = dps_buyers and potato-scenario = "gfpp" [
+          set potatoes-purple-organic-fresh_price-to-sell random-normal potato-organic-purple_gfpp-price-shipper-receives-avg potato-organic-purple_gfpp-price-shipper-receives-stdev
+        ]
+      if buyers = dps_buyers and potato-scenario = "small-potatoes" [
+          set potatoes-purple-organic-fresh_price-to-sell random-normal potato-organic-purple_gfpp-price-shipper-receives-avg potato-organic-purple_gfpp-price-shipper-receives-stdev
+        ]
+        
+      if ( week = 5 ) or ( week = 18 ) 
+        [ set potatoes-purple-organic-fresh_price-to-sell ( potatoes-purple-organic-fresh_price-to-sell * 1.1 ) ] ; prices are 10% higher during the off-season
+      if debug-mode = true [
+        print " "
+        print "price to buy:"
+        print [ potatoes-purple-organic-fresh_price-to-buy ] of my-buyer]
+        
+      let col-id id
+      let row-id 0
+      if debug-mode = true [ 
+        print " "
+        print "my buyer's name:"
+        print [ agent-name ] of my-buyer
+        print "my buyer's id:"
+        print [ id ] of my-buyer
+        print "my buyer's space available:"
+        print [ potatoes-purple-organic-fresh_contract-space-available ] of my-buyer ]
+      ask my-buyer [
+        set row-id id ]
+  
+      let rounded-price ( precision ( potatoes-purple-organic-fresh_price-to-sell ) 2 )
+      table_set potato-table_purple-organic row-id col-id POTATO_PRICE rounded-price debug-mode
+         
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "end of price negotatiations - moving on to quantity negotiation"
+        print "-------------------------------------------------------"
+        print " " ]
+              
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+      let contract-space-available item 0 ( [ potatoes-purple-organic-fresh_contract-space-available ] of my-buyer )
+      let seller_potatoes-available ( potatoes-purple-organic-quantity-estimate - potatoes-purple-organic-fresh-promised )
+        
+      ifelse contract-space-available >= seller_potatoes-available
+        [ set contracted-this-time seller_potatoes-available ]
+        [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]  
+        
+      if debug-mode = TRUE [
+        print " "
+        print "updated yield promised from matrix"
+        print potatoes-purple-organic-fresh-promised ]  
+        
+      table_create_and_sum potato-table_purple-organic row-id col-id POTATO_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to potato quantity table
+        
+      ;; adding code to initialize outstanding potato table
+      table_create_and_sum potato-table_purple-organic row-id col-id POTATO_OUTSTANDING_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to potato quantity table
+        
+      if debug-mode = TRUE [
+        print " "
+        print "yield promised before this contract"
+        print potatoes-purple-organic-fresh-promised
+        print "amount contracted this time"
+        print contracted-this-time ]
+        
+      set potatoes-purple-organic-fresh-promised ( potatoes-purple-organic-fresh-promised + contracted-this-time )   
+        
+      if debug-mode = TRUE [
+        print " "
+        print "-------------------------------------------------------"
+        if sellers = potato_farmers [ print "farmer's total yield (potato-farmers_yield-estimated_purple-organic):" ]
+        if sellers = potato_farmers [ print potato-farmers_yield-estimated_purple-organic ]
+        print "updated total yield promised"
+        print potatoes-purple-organic-fresh-promised
+        print "-------------------------------------------------------" 
+        print " " ]  
+        
+      ask my-buyer [
+        set potatoes-purple-organic-fresh_contract-space-available ( potatoes-purple-organic-fresh_contract-space-available - contracted-this-time )
+        set potatoes-purple-organic-fresh_my-incoming-total ( potatoes-purple-organic-fresh_my-incoming-total + contracted-this-time)
+        if debug-mode = true [
+          print " "
+          print "my buyer's updated space available:"
+          print potatoes-purple-organic-fresh_contract-space-available ] ]              
+      ]
+      
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "end of while loop"
+      print "-------------------------------------------------------"
+      print " " ]
+      
+      ]   
+    
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "END OF NEGOTIATIONS FOR THIS AGENT"
+      print "-------------------------------------------------------"
+      print " " ]
+ 
+  ]
+  
+  
+;     ------ (negotiations end here. final print statements below)
+  
+  
+  if debug-mode = TRUE [
+    print " "
+    print "CONTRACT NEGOTIATION RESULTS:"
+    print " "
+    print "printing price debug table:"
+    debugMatrix potato-table_purple-organic POTATO_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+    print "printing quantity debug table:"
+    debugMatrix potato-table_purple-organic POTATO_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+  ask buyers [ 
+      let tmp word id ": " 
+      print word tmp potatoes-purple-organic-fresh_contract-space-available ] ]
+  
+end 
+
+
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+
+
+to priceAdjustments_purpleOrganicProcessed [ buyers buyer_count ]
+ 
+  if year != 1 [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) ) 
+    let comparison-group n-of subgroup-number buyers
+    let lowest-buyer min-one-of comparison-group [ potatoes-purple-organic-processed_price-to-buy ]
+    let highest-buyer max-one-of comparison-group [ potatoes-purple-organic-processed_price-to-buy ]
+    ask lowest-buyer [ set potatoes-purple-organic-processed_price-to-buy ( potatoes-purple-organic-processed_price-to-buy * 1.1 ) ]      
+    ask highest-buyer [ set potatoes-purple-organic-processed_price-to-buy ( potatoes-purple-organic-processed_price-to-buy * .9 ) ] ]
+  
+end
+
+to-report contractSpaceAvailable_purpleOrganicProcessed [ buyers  debug ]
+  
+  ask buyers [
+    set potatoes-purple-organic-processed_contract-space-available ( potatoes-purple-organic-processed_inventory-maximum - potatoes-purple-organic-processed_inventory-current ) 
+    if debug = TRUE [ print " " print agent-name print "contract space available: " print potatoes-purple-organic-processed_contract-space-available print " " ] ]
+  report buyers
+    
+end
+
+to setContracts_purpleOrganicProcessed [ sellers  buyers  buyer_count  loyalty]
+  
+  if debug-mode = TRUE [ 
+    print " "
+    print "------------------------------------------------------"
+    print "CONTRACTING STEP:"
+    let tmp word sellers " sell to " 
+    print word tmp buyers
+    print "------------------------------------------------------" ]
+  
+  priceAdjustments_purpleOrganicProcessed buyers buyer_count
+  ask buyers [ set potatoes-purple-organic-processed_contract-space-available ( potatoes-purple-organic-processed_inventory-maximum - potatoes-purple-organic-processed_inventory-current ) ]
+  ;set buyers contractSpaceAvailable_purpleOrganicProcessed buyers  debug-mode
+
+  ask sellers [
+    
+    if debug-mode = TRUE [ 
+        print " "  
+        print "-------------------------------------------------------"
+        print "beginning negotation"
+        print "-------------------------------------------------------"
+        print " " ]
+    
+    let potatoes-purple-organic-processed-quantity-estimate 0
+    let contracted-this-time 0
+
+    if sellers = potato_processors [ set potatoes-purple-organic-processed-quantity-estimate ( potatoes-purple-organic-fresh_my-incoming-total * .8 ) ]
+    if sellers = distributors [ set potatoes-purple-organic-processed-quantity-estimate potatoes-purple-organic-processed_my-incoming-total ]
+    if debug-mode = TRUE [ 
+      print " "
+      print agent-name
+      print "estimated quantity available to contract this step (potatoes-purple-organic-processed-quantity-estimate):"
+      print potatoes-purple-organic-processed-quantity-estimate ]
+    
+    while [ ( potatoes-purple-organic-processed-promised < potatoes-purple-organic-processed-quantity-estimate ) and ( any? buyers with [ potatoes-purple-organic-processed_contract-space-available > 0 ] ) ] [
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "beginning while loop"
+        print "-------------------------------------------------------"
+        print " " 
+        print "we are thinking about buyers!"
+        print "seller name: "
+        print agent-name
+        print "seller id:"
+        print id
+        print "potatoes-purple-organic-processed-promised:"
+        print potatoes-purple-organic-processed-promised
+        print "potatoes-purple-organic-processed-quantity-estimate:"
+        print potatoes-purple-organic-processed-quantity-estimate ]
+
+      let buyers-with-capacity ( buyers with [ potatoes-purple-organic-processed_contract-space-available > 0 ] )
+      if debug-mode = true [
+        print " "
+        print "buyers with capacity:"
+        print buyers-with-capacity ]
+      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers ] ]  
+        [ set bidding_buyers buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers
+            print "who numbers of bidding buyers:"
+            print [who] of bidding_buyers ] ]
+      
+      let my-buyer n-of 1 ( bidding_buyers with-max [ potatoes-purple-organic-processed_price-to-buy ] )   
+        
+      set potatoes-purple-organic-processed_price-to-sell item 0 [ potatoes-purple-organic-processed_price-to-buy ] of my-buyer
+        if debug-mode = true [
+          print " "
+          print "price to buy:"
+          print [ potatoes-purple-organic-processed_price-to-buy ] of my-buyer]        
+        
+      let col-id id
+      let row-id 0
+      if debug-mode = true [
+        print " "
+        print "my buyer's name:"
+        print [ agent-name ] of my-buyer
+        print "my buyer's id:"
+        print [ id ] of my-buyer
+        print "my buyer's space available:"
+        print [ potatoes-purple-organic-processed_contract-space-available ] of my-buyer ]
+      ask my-buyer [
+        set row-id id ]
+
+      let rounded-price ( precision ( potatoes-purple-organic-processed_price-to-sell ) 2 )
+      table_set potato-table_purple-organic-processed row-id col-id POTATO_PRICE rounded-price debug-mode        
+         
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "end of price negotatiations - moving on to quantity negotiation"
+        print "-------------------------------------------------------"
+        print " " ]
+              
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+      let contract-space-available item 0 ( [ potatoes-purple-organic-processed_contract-space-available ] of my-buyer )
+      let seller_potatoes-available ( potatoes-purple-organic-processed-quantity-estimate - potatoes-purple-organic-processed-promised )
+        
+      ifelse contract-space-available >= seller_potatoes-available
+        [ set contracted-this-time seller_potatoes-available ]
+        [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]
+
+      if debug-mode = TRUE [
+        print " "
+        print "updated yield promised from matrix"
+        print potatoes-purple-organic-processed-promised ]  
+        
+      table_create_and_sum potato-table_purple-organic-processed row-id col-id POTATO_QUANTITY contracted-this-time debug-mode
+      table_create_and_sum potato-table_purple-organic-processed row-id col-id POTATO_OUTSTANDING_QUANTITY contracted-this-time debug-mode
+        
+      if debug-mode = TRUE [
+        print " "
+        print "yield promised before this contract"
+        print potatoes-purple-organic-processed-promised
+        print "amount contracted this time"
+        print contracted-this-time ]
+        
+      set potatoes-purple-organic-processed-promised ( potatoes-purple-organic-processed-promised + contracted-this-time )   
+        
+      if debug-mode = TRUE [
+        print " "
+        print "-------------------------------------------------------"
+        if sellers = potato_farmers [ print "farmer's total yield (potato-farmers_yield-estimated_purple-organic):" ]
+        if sellers = potato_farmers [ print potato-farmers_yield-estimated_purple-organic ]
+        print "updated total yield promised"
+        print potatoes-purple-organic-processed-promised
+        print "-------------------------------------------------------" 
+        print " " ]  
+        
+      ask my-buyer [
+        set potatoes-purple-organic-processed_contract-space-available ( potatoes-purple-organic-processed_contract-space-available - contracted-this-time )
+        set potatoes-purple-organic-processed_my-incoming-total ( potatoes-purple-organic-processed_my-incoming-total + contracted-this-time)
+        if debug-mode = true [
+          print " "
+          print "my buyer's updated space available:"
+          print potatoes-purple-organic-processed_contract-space-available ] ]
+              
+      ]
+      
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "end of while loop"
+      print "-------------------------------------------------------"
+      print " " ]
+      
+      ]   
+    
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "END OF NEGOTIATIONS FOR THIS AGENT"
+      print "-------------------------------------------------------"
+      print " " ] 
+    
+  ]
+  
+  
+;     ------ (negotiations end here. final print statements below)
+  
+  
+  if debug-mode = TRUE [
+    print " "
+    print "CONTRACT NEGOTIATION RESULTS:"
+    print " "
+    print "printing price debug table:"
+    debugMatrix potato-table_purple-organic-processed POTATO_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+    print "printing quantity debug table:"
+    debugMatrix potato-table_purple-organic-processed POTATO_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+  ask buyers [ 
+      let tmp word id ": " 
+      print word tmp potatoes-purple-organic-processed_contract-space-available ] ]
+  
+end 
+
+
+; END OF THIS POTATO TYPE
+;*****************************************************************************************************************************
+;*****************************************************************************************************************************
+; START OF NEW POTATO TYPE
+
+
+to priceAdjustments_smallFresh [ buyers  buyer_count ]
+  
+  ask buyers [
+  if year != 1 [
+    let subgroup-number ( round ( market-knowledge * buyer_count ) ) 
+    let comparison-group n-of subgroup-number buyers
+    let lowest-buyer min-one-of comparison-group [ potatoes-russet-conventional-fresh-small_price-to-buy ] 
+    let highest-buyer max-one-of comparison-group [ potatoes-russet-conventional-fresh-small_price-to-buy ]
+    ask lowest-buyer [ set potatoes-russet-conventional-fresh-small_price-to-buy ( potatoes-russet-conventional-fresh-small_price-to-buy * 1.1 ) ]      
+    ask highest-buyer [ set potatoes-russet-conventional-fresh-small_price-to-buy ( potatoes-russet-conventional-fresh-small_price-to-buy * .9 ) ] ] ]
+  
+end
+
+
+to-report contractSpaceAvailable_smallFresh [ buyers  debug ]
+  
+  ask buyers [
+    set potatoes-russet-conventional-fresh-small_contract-space-available ( potatoes-russet-conventional-fresh-small_inventory-maximum - potatoes-russet-conventional-fresh-small_inventory-current ) 
+    if debug = TRUE [ print " " print agent-name print "contract space available: " print potatoes-russet-conventional-fresh-small_contract-space-available print " " ] ]
+  report buyers
+    
+end
+
+
+to setContracts_smallFresh [ sellers  buyers  buyer_count  loyalty ]
+  
+  if debug-mode = TRUE [ 
+    print " "
+    print "------------------------------------------------------"
+    print "CONTRACTING STEP:"
+    let tmp word sellers " sell to " 
+    print word tmp buyers
+    print "------------------------------------------------------" ]
+  
+  priceAdjustments_smallFresh  buyers buyer_count
+  ask buyers [ set potatoes-russet-conventional-fresh-small_contract-space-available ( potatoes-russet-conventional-fresh-small_inventory-maximum - potatoes-russet-conventional-fresh-small_inventory-current ) ]
+  ;set buyers contractSpaceAvailable_smallFresh buyers debug-mode
+
+  ask sellers [
+    
+    if debug-mode = TRUE [ 
+        print " "  
+        print "-------------------------------------------------------"
+        print "beginning negotation"
+        print "-------------------------------------------------------"
+        print " " ]
+    
+    let potatoes-russet-conventional-small-quantity-estimate 0
+    let contracted-this-time 0
+    
+    if sellers != potato_farmers [
+      if potatoes-russet-conventional-fresh-small_my-incoming-total < 0 [ set potatoes-russet-conventional-fresh-small_my-incoming-total 0 ] ]
+    
+    ifelse sellers = potato_farmers [
+      let transaction-percent 0        
+      if buyers = potato_shippers [ set transaction-percent .35 ]
+      if buyers = potato_repackers [ set transaction-percent 1 ]
+      if week = 31 [
+        set potatoes-russet-conventional-small-quantity-estimate ( ( potato-farmers_yield-estimated_russet-conventional-small * .5 ) * transaction-percent ) ] ; half of estimated yield promised during 6-month prime contract season
+      let inventory-for-off-season 0
+      if week = 5 [
+        set inventory-for-off-season potatoes-russet-conventional-fresh-small_inventory-current 
+        set potatoes-russet-conventional-small-quantity-estimate ( ( inventory-for-off-season * transaction-percent ) * .5 ) ] ; half of actual inventory at start of off-season promised during both 3-month off-season contract seasons
+      if week = 18 [ 
+        set potatoes-russet-conventional-small-quantity-estimate ( ( inventory-for-off-season * transaction-percent ) * .5 ) ] ; half of actual inventory at start of off-season promised during both 3-month off-season contract seasons
+      if debug-mode = TRUE [
+        print "farmer's total yield (potato-farmers_yield-estimated_russet-conventional-small):"
+        print potato-farmers_yield-estimated_russet-conventional-small ] ]
+    [ ifelse sellers = potato_shippers [
+        let transaction-percent 0
+        if buyers = dps_buyers [ set transaction-percent 1 ]
+        if buyers = potato_processors [ set transaction-percent .5 ]
+        if buyers = distributors [ set transaction-percent 1 ]         
+        set potatoes-russet-conventional-small-quantity-estimate ( potatoes-russet-conventional-fresh-small_my-incoming-total * transaction-percent ) ] ; ( ( potatoes-russet-organic-fresh_inventory-maximum - potatoes-russet-organic-fresh_contract-space-available ) * transaction-percent )]
+      [ set potatoes-russet-conventional-small-quantity-estimate potatoes-russet-conventional-fresh-small_my-incoming-total ] ] ; ( potatoes-russet-organic-fresh_inventory-maximum - potatoes-russet-organic-fresh_contract-space-available ) ] ]
+
+    if debug-mode = TRUE [ 
+      print " "
+      print agent-name
+      print "estimated quantity available to contract this step (potatoes-russet-conventional-small-quantity-estimate):"
+      print potatoes-russet-conventional-small-quantity-estimate ]
+
+    while [ ( potatoes-russet-conventional-fresh-small-promised < potatoes-russet-conventional-small-quantity-estimate ) and ( any? buyers with [ potatoes-russet-conventional-fresh-small_contract-space-available > 0 ] ) ] [
+ 
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "beginning while loop"
+        print "-------------------------------------------------------"
+        print " " ]
+      
+      if debug-mode = true [
+        print " "
+        print "we are thinking about buyers!"
+        print "seller name: "
+        print agent-name
+        print "seller id:"
+        print id
+        print "potatoes-russet-organic-fresh-promised:"
+        print potatoes-russet-conventional-fresh-small-promised
+        print "potatoes-russet-organic-quantity-estimate:"
+        print potatoes-russet-conventional-small-quantity-estimate ]
+
+      let buyers-with-capacity ( buyers with [ potatoes-russet-conventional-fresh-small_contract-space-available > 0 ] )
+      if debug-mode = true [
+        print " "
+        print "buyers with capacity:"
+        print buyers-with-capacity ]
+      
+      let bidding_buyers 0
+      
+      if any? buyers-with-capacity [
+        
+        ifelse ( count buyers-with-capacity ) >= ( round ( market-knowledge * buyer_count ) )
+        [ set bidding_buyers n-of ( round ( market-knowledge * buyer_count ) ) buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers ] ]  
+        [ set bidding_buyers buyers-with-capacity
+          if debug-mode = true [
+            print " "
+            print "id of bidding buyers:"
+            print [id] of bidding_buyers
+            print "who numbers of bidding buyers:"
+            print [who] of bidding_buyers ] ]
+
+       let my-buyer n-of 1 ( bidding_buyers with-max [ potatoes-russet-conventional-fresh-small_price-to-buy ] )
+        
+      set potatoes-russet-conventional-fresh-small_price-to-sell item 0 [ potatoes-russet-conventional-fresh-small_price-to-buy ] of my-buyer
+        
+      ; if buyer is dps and scenario is fresh or gfpp set price to distrib from those scenarios
+      if buyers = dps_buyers and potato-scenario = "gfpp" [
+          set potatoes-russet-conventional-fresh-small_price-to-sell random-normal potato-conventional-russet-small_gfpp-price-shipper-receives-avg potato-conventional-russet-small_gfpp-price-shipper-receives-stdev
+          set short-supply-chain-interactions short-supply-chain-interactions + 1 ;added 12/10/21 el
+        ]
+      if buyers = dps_buyers and potato-scenario = "small-potatoes" [
+          set potatoes-russet-conventional-fresh-small_price-to-sell random-normal potato-conventional-russet-small_gfpp-price-shipper-receives-avg potato-conventional-russet-small_gfpp-price-shipper-receives-stdev
+          set short-supply-chain-interactions short-supply-chain-interactions + 1 ;added 12/10/21 el
+        ]
+        
+      if ( week = 5 ) or ( week = 18 ) 
+        [ set potatoes-russet-conventional-fresh-small_price-to-sell ( potatoes-russet-conventional-fresh-small_price-to-sell * 1.1 ) ] ; prices are 10% higher during the off-season
+      if debug-mode = true [
+        print " "
+        print "price to buy:"
+        print [ potatoes-russet-conventional-fresh-small_price-to-buy ] of my-buyer]
+        
+      let col-id id
+      let row-id 0
+      if debug-mode = true [ 
+        print " "
+        print "my buyer's name:"
+        print [ agent-name ] of my-buyer
+        print "my buyer's id:"
+        print [ id ] of my-buyer
+        print "my buyer's space available:"
+        print [ potatoes-russet-conventional-fresh-small_contract-space-available ] of my-buyer ]
+      ask my-buyer [
+        set row-id id ]
+ 
+      let rounded-price ( precision ( potatoes-russet-conventional-fresh-small_price-to-sell ) 2 )
+      table_set potato-table_russet-conventional-small row-id col-id POTATO_PRICE rounded-price debug-mode
+      
+      if debug-mode = TRUE [ 
+        print " "
+        print "-------------------------------------------------------"
+        print "end of price negotatiations - moving on to quantity negotiation"
+        print "-------------------------------------------------------"
+        print " " ]
+              
+
+;     ------ (price negotiations above line, quantity negotiations below line)  
+        
+        
+      let contract-space-available item 0 ( [ potatoes-russet-conventional-fresh-small_contract-space-available ] of my-buyer )
+      let seller_potatoes-available ( potatoes-russet-conventional-small-quantity-estimate - potatoes-russet-conventional-fresh-small-promised )
+        
+      ifelse contract-space-available >= seller_potatoes-available
+        [ set contracted-this-time seller_potatoes-available ]
+        [ set contracted-this-time item 0 ( [ contract-space-available ] of my-buyer ) ]  
+        
+      if debug-mode = TRUE [
+        print " "
+        print "updated yield promised from matrix"
+        print potatoes-russet-conventional-fresh-small-promised ]  
+        
+      table_create_and_sum potato-table_russet-conventional-small row-id col-id POTATO_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to potato quantity table
+        
+      ;; adding code to initialize outstanding potato table
+      table_create_and_sum potato-table_russet-conventional-small row-id col-id POTATO_OUTSTANDING_QUANTITY contracted-this-time debug-mode ;; adds this value (cumulative) to potato quantity table
+        
+      if debug-mode = TRUE [
+        print " "
+        print "yield promised before this contract"
+        print potatoes-russet-conventional-fresh-small-promised
+        print "amount contracted this time"
+        print contracted-this-time ]
+        
+      set potatoes-russet-conventional-fresh-small-promised ( potatoes-russet-conventional-fresh-small-promised + contracted-this-time )   
+        
+      if debug-mode = TRUE [
+        print " "
+        print "-------------------------------------------------------"
+        if sellers = potato_farmers [ print "farmer's total yield (potato-farmers_yield-estimated_russet-conventional-small):" ]
+        if sellers = potato_farmers [ print potato-farmers_yield-estimated_russet-conventional-small ]
+        print "updated total yield promised"
+        print potatoes-russet-conventional-fresh-small-promised
+        print "-------------------------------------------------------" 
+        print " " ]  
+        
+      ask my-buyer [
+        set potatoes-russet-conventional-fresh-small_contract-space-available ( potatoes-russet-conventional-fresh-small_contract-space-available - contracted-this-time )
+        set potatoes-russet-conventional-fresh-small_my-incoming-total ( potatoes-russet-conventional-fresh-small_my-incoming-total + contracted-this-time)
+        if debug-mode = true [
+          print " "
+          print "my buyer's updated space available:"
+          print potatoes-russet-conventional-fresh-small_contract-space-available ] ]              
+      ]
+      
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "end of while loop"
+      print "-------------------------------------------------------"
+      print " " ]
+      
+      ]   
+    
+    if debug-mode = TRUE [ 
+      print " "
+      print "-------------------------------------------------------"
+      print "END OF NEGOTIATIONS FOR THIS AGENT"
+      print "-------------------------------------------------------"
+      print " " ]
+  
+  ]
+  
+  
+;     ------ (negotiations end here. final print statements below)
+  
+  
+  if debug-mode = TRUE [
+    print " "
+    print "CONTRACT NEGOTIATION RESULTS:"
+    print " "
+    print "printing price debug table:"
+    debugMatrix potato-table_russet-conventional-small POTATO_PRICE ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+    print "printing quantity debug table:"
+    debugMatrix potato-table_russet-conventional-small POTATO_QUANTITY ( [ who ] of ( max-one-of turtles [ who ] ) )
+    print " "
+  ask buyers [ 
+      let tmp word id ": " 
+      print word tmp potatoes-russet-conventional-fresh-small_contract-space-available ] ]
+  
+end 
+
+
+; END OF THIS POTATO TYPE
+;*****************************************************************************************************************************
+
+
+
+
+
